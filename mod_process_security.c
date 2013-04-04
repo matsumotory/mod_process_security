@@ -58,7 +58,9 @@
 #include "http_protocol.h"
 #include "http_request.h"
 #include "mpm_common.h"
+#include <sys/types.h>
 #include <unistd.h>
+#include <grp.h>
 #include <sys/prctl.h>
 #include <sys/capability.h>
 
@@ -87,6 +89,7 @@ typedef struct {
 typedef struct {
 
     int all_ext_enable;
+    int all_cgi_enable;
     uid_t default_uid;
     gid_t default_gid;
     uid_t min_uid;
@@ -121,6 +124,7 @@ static void *create_config(apr_pool_t *p, server_rec *s)
     conf->min_uid        = PS_MIN_UID;
     conf->min_gid        = PS_MIN_GID;
     conf->all_ext_enable = OFF;
+    conf->all_cgi_enable = OFF;
     conf->extensions     = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
 
     return conf;
@@ -180,6 +184,20 @@ static const char * set_all_ext(cmd_parms *cmd, void *mconfig, int flag)
         return err;
 
     conf->all_ext_enable = flag;
+
+    return NULL;
+}
+
+
+static const char * set_all_cgi(cmd_parms *cmd, void *mconfig, int flag)
+{
+    process_security_config_t *conf = ap_get_module_config (cmd->server->module_config, &process_security_module);
+    const char *err = ap_check_cmd_context (cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+
+    if (err != NULL)
+        return err;
+
+    conf->all_cgi_enable = flag;
 
     return NULL;
 }
@@ -271,9 +289,14 @@ static int process_security_set_cap(request_rec *r)
 
     cap_free(cap);
 
+    int ret;
     setgroups(0, NULL);
-    setgid(gid);
-    setuid(uid);
+    ret = setgid(gid);
+    if (ret < 0)
+        return ret;
+    ret = setuid(uid);
+    if (ret < 0)
+        return ret;
 
     cap = cap_get_proc();
     cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_CLEAR);
@@ -332,6 +355,7 @@ static int process_security_handler(request_rec *r)
 
     process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
+    // check a target file for process_security
     if (thread_on)
         return DECLINED;
 
@@ -345,6 +369,9 @@ static int process_security_handler(request_rec *r)
                 enable = ON;
         }
     }
+
+    if (conf->all_cgi_enable && strcmp(r->handler, "cgi-script") == 0) 
+        enable = ON;
 
     if (!enable)
         return DECLINED;
@@ -392,6 +419,7 @@ static int process_security_handler(request_rec *r)
 static const command_rec process_security_cmds[] = {
 
     AP_INIT_FLAG("PSExAll", set_all_ext, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable All Extensions On / Off. (default Off)"),
+    AP_INIT_FLAG("PSExCGI", set_all_cgi, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable All CGI Extensions On / Off. (default Off)"),
     AP_INIT_TAKE1("PSMode", set_mode, NULL, RSRC_CONF | ACCESS_CONF, "stat only. you can custmize this code."),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
