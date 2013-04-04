@@ -34,6 +34,11 @@ PSExAll On
 PSExAll On
 ```
 
+* Set Enable ALL CGI Extensions On. (default Off)
+```
+PSExCGI On
+```
+
 * [Optional] Set Enable Custom Extensions. (unset PSExAll)
 ```
 PSExtensions .php .pl .py
