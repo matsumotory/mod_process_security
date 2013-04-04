@@ -7,9 +7,8 @@ See also http://blog.matsumoto-r.jp/?p=1972
     - Academic Center for Computing and Media Studies, Kyoto University
     - Okabe Lab
     - email: matsumoto_r at net.ist.i.kyoto-u.ac.jp
-
-- Date     2011/11/11
-- Version  1.00
+    - Date     2011/11/11
+    - Version  1.00
 
 - change log
 ```
