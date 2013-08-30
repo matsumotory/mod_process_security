@@ -155,8 +155,10 @@ static const char *set_minuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
     if (err != NULL)
         return err;
 
-    conf->min_uid = ap_uname2id(uid);
-    conf->min_gid = ap_gname2id(gid);
+    //conf->min_uid = ap_uname2id(uid);
+    //conf->min_gid = ap_gname2id(gid);
+    conf->min_uid = (uid_t)atoi(uid);
+    conf->min_gid = (gid_t)atoi(gid);
 
     return NULL;
 }
@@ -170,8 +172,10 @@ static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
     if (err != NULL)
         return err;
 
-    conf->default_uid = ap_uname2id(uid);
-    conf->default_gid = ap_gname2id(gid);
+    //conf->default_uid = ap_uname2id(uid);
+    //conf->default_gid = ap_gname2id(gid);
+    conf->default_uid = (uid_t)atoi(uid);
+    conf->default_gid = (gid_t)atoi(gid);
 
     return NULL;
 }
