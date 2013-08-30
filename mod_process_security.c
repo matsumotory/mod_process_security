@@ -90,6 +90,7 @@ typedef struct {
 
     int all_ext_enable;
     int all_cgi_enable;
+    u_int root_disable;
     uid_t default_uid;
     gid_t default_gid;
     uid_t min_uid;
@@ -125,6 +126,7 @@ static void *create_config(apr_pool_t *p, server_rec *s)
     conf->min_gid        = PS_MIN_GID;
     conf->all_ext_enable = OFF;
     conf->all_cgi_enable = OFF;
+    conf->root_disable   = ON;
     conf->extensions     = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
 
     return conf;
@@ -203,6 +205,20 @@ static const char * set_all_cgi(cmd_parms *cmd, void *mconfig, int flag)
 }
 
 
+static const char * set_root_disable(cmd_parms *cmd, void *mconfig, int flag)
+{
+    process_security_config_t *conf = ap_get_module_config (cmd->server->module_config, &process_security_module);
+    const char *err = ap_check_cmd_context (cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+
+    if (err != NULL)
+        return err;
+
+    conf->root_disable = flag;
+
+    return NULL;
+}
+
+
 static const char * set_extensions(cmd_parms *cmd, void *mconfig, const char *arg)
 {
     process_security_config_t *conf = ap_get_module_config (cmd->server->module_config, &process_security_module);
@@ -254,6 +270,19 @@ static int process_security_set_cap(request_rec *r)
     } else {
         gid = conf->default_gid;
         uid = conf->default_uid;
+    }
+
+    if (conf->root_disable && (uid == 0 || gid == 0)) {
+        ap_log_error(APLOG_MARK
+            , APLOG_NOTICE
+            , 0
+            , NULL
+            , "%s NOTICE %s: permission of %s is root, can't run the file"
+            , MODULE_NAME
+            , __func__
+            , r->filename
+        );
+        return -1;
     }
 
     cap       = cap_init();
@@ -420,6 +449,7 @@ static const command_rec process_security_cmds[] = {
 
     AP_INIT_FLAG("PSExAll", set_all_ext, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable All Extensions On / Off. (default Off)"),
     AP_INIT_FLAG("PSExCGI", set_all_cgi, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable All CGI Extensions On / Off. (default Off)"),
+    AP_INIT_FLAG("PSRootDisable", set_root_disable, NULL, ACCESS_CONF | RSRC_CONF, "Disable run with root owner On / Off. (default On)"),
     AP_INIT_TAKE1("PSMode", set_mode, NULL, RSRC_CONF | ACCESS_CONF, "stat only. you can custmize this code."),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),

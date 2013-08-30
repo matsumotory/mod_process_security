@@ -54,3 +54,7 @@ PSMinUidGid 200 200
 PSDefaultUidGid
 ```
 
+* [Optional] Enable run with root permission (default Disable)
+```
+PSRootDisable Off
+```
