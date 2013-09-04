@@ -96,6 +96,7 @@ typedef struct {
     uid_t min_uid;
     gid_t min_gid;
     apr_array_header_t *extensions;
+    apr_array_header_t *ignore_extensions;
 
 } process_security_config_t;
 
@@ -120,14 +121,15 @@ static void *create_config(apr_pool_t *p, server_rec *s)
 {
     process_security_config_t *conf = apr_palloc(p, sizeof (*conf));
 
-    conf->default_uid    = PS_DEFAULT_UID;
-    conf->default_gid    = PS_DEFAULT_GID;
-    conf->min_uid        = PS_MIN_UID;
-    conf->min_gid        = PS_MIN_GID;
-    conf->all_ext_enable = OFF;
-    conf->all_cgi_enable = OFF;
-    conf->root_enable    = OFF;
-    conf->extensions     = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
+    conf->default_uid           = PS_DEFAULT_UID;
+    conf->default_gid           = PS_DEFAULT_GID;
+    conf->min_uid               = PS_MIN_UID;
+    conf->min_gid               = PS_MIN_GID;
+    conf->all_ext_enable        = OFF;
+    conf->all_cgi_enable        = OFF;
+    conf->root_enable           = OFF;
+    conf->extensions            = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
+    conf->ignore_extensions     = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
 
     return conf;
 }
@@ -232,6 +234,20 @@ static const char * set_extensions(cmd_parms *cmd, void *mconfig, const char *ar
         return err;
 
     *(const char **)apr_array_push(conf->extensions) = arg;
+
+    return NULL;
+}
+
+
+static const char * set_ignore_extensions(cmd_parms *cmd, void *mconfig, const char *arg)
+{
+    process_security_config_t *conf = ap_get_module_config (cmd->server->module_config, &process_security_module);
+    const char *err = ap_check_cmd_context (cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+
+    if (err != NULL)
+        return err;
+
+    *(const char **)apr_array_push(conf->ignore_extensions) = arg;
 
     return NULL;
 }
@@ -411,6 +427,12 @@ static int process_security_handler(request_rec *r)
 
     if (conf->all_ext_enable) {
         enable = ON;
+        for (i = 0; i < conf->ignore_extensions->nelts; i++) {
+            extension = ((char **)conf->ignore_extensions->elts)[i];
+            name_len = strlen(r->filename) - strlen(extension);
+            if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
+                enable = OFF;
+        }
     } else {
         for (i = 0; i < conf->extensions->nelts; i++) {
             extension = ((char **)conf->extensions->elts)[i];
@@ -475,6 +497,7 @@ static const command_rec process_security_cmds[] = {
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
     AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
+    AP_INIT_ITERATE("PSIgnoreExtensions", set_ignore_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Ignore Extensions."),
     {NULL}
 };
 
