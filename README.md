@@ -44,6 +44,13 @@ PSExCGI On
 PSExtensions .php .pl .py
 ```
 
+* [Optional] Set Ignore Custom Extensions.
+```
+# .html and .css were ignored
+PSExAll On
+PSIgnoreExtensions .html .css
+```
+
 * [Optional] Minimal uid and gid. (default uid:100 gid:100)
 ```
 PSMinUidGid 200 200
