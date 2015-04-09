@@ -263,9 +263,9 @@ static int process_security_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *pt
 
     if (!data)
         apr_pool_userdata_set((const void *)1, userdata_key, apr_pool_cleanup_null, s->process->pool);
-    else                                              
+    else
         ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, MODULE_NAME "/" MODULE_VERSION " mechanism enabled");
-    
+
     return OK;
 }
 
@@ -442,7 +442,7 @@ static int process_security_handler(request_rec *r)
         }
     }
 
-    if (conf->all_cgi_enable && strcmp(r->handler, "cgi-script") == 0) 
+    if (conf->all_cgi_enable && strcmp(r->handler, "cgi-script") == 0)
         enable = ON;
 
     if (!enable)
