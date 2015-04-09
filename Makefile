@@ -7,7 +7,7 @@
 TARGET=mod_process_security.c
 
 #   the used tools
-APXS=/usr/sbin/apxs
+APXS=apxs
 APACHECTL=/etc/init.d/httpd
 #APXS=/usr/local/apache2.4/bin/apxs
 #APACHECTL=/usr/local/apache2.4/bin/apachectl

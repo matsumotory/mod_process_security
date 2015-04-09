@@ -44,6 +44,11 @@ PSExCGI On
 PSExtensions .php .pl .py
 ```
 
+* [Optional] Set Enable Custom Handlers. (unset PSExAll)
+```
+PSHandlers application/x-httpd-php hoge-script
+```
+
 * [Optional] Set Ignore Custom Extensions.
 ```
 # .html and .css were ignored
