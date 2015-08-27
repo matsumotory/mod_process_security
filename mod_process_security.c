@@ -159,14 +159,14 @@ static const char *set_minuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
 
   unsigned long check_uid = (unsigned long)apr_atoi64(uid);
 
-  if(check_uid < 0 || check_uid > UINT_MAX){
+  if(check_uid > UINT_MAX){
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
                  "%s ERROR %s:minuid of illegal value", MODULE_NAME, __func__);
     return "minuid of illegal value";
   }
 
   unsigned long check_gid = (unsigned long)apr_atoi64(gid);
-  if(check_gid < 0 || check_gid > UINT_MAX){
+  if(check_gid > UINT_MAX){
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
                  "%s ERROR %s:mingid of illegal value", MODULE_NAME, __func__);
     return "mingid of illegal value";
@@ -191,14 +191,14 @@ static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
 
   unsigned long check_uid = (unsigned long)apr_atoi64(uid);
 
-  if(check_uid < 0 || check_uid > UINT_MAX){
+  if(check_uid > UINT_MAX){
       ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
                    "%s ERROR %s:defuid of illegal value", MODULE_NAME, __func__);
       return "defuid of illegal value";
   }
 
   unsigned long check_gid = (unsigned long)apr_atoi64(gid);
-  if(check_gid < 0 || check_gid > UINT_MAX){
+  if(check_gid > UINT_MAX){
        ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
                    "%s ERROR %s:defgid of illegal value", MODULE_NAME, __func__);
        return "defgid of illegal value";
