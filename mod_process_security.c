@@ -63,6 +63,7 @@
 #include <grp.h>
 #include <sys/prctl.h>
 #include <sys/capability.h>
+#include <limits.h>
 
 #define MODULE_NAME "mod_process_security"
 #define MODULE_VERSION "1.0.0"
@@ -156,10 +157,23 @@ static const char *set_minuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
   if (err != NULL)
     return err;
 
-  // conf->min_uid = ap_uname2id(uid);
-  // conf->min_gid = ap_gname2id(gid);
-  conf->min_uid = (uid_t)atoi(uid);
-  conf->min_gid = (gid_t)atoi(gid);
+  unsigned long check_uid = (unsigned long)apr_atoi64(uid);
+
+  if(check_uid < 0 || check_uid > UINT_MAX){
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                 "%s ERROR %s:minuid of illegal value", MODULE_NAME, __func__);
+    return "minuid of illegal value";
+  }
+
+  unsigned long check_gid = (unsigned long)apr_atoi64(gid);
+  if(check_gid < 0 || check_gid > UINT_MAX){
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                 "%s ERROR %s:mingid of illegal value", MODULE_NAME, __func__);
+    return "mingid of illegal value";
+  }
+
+  conf->min_uid = (uid_t)check_uid;
+  conf->min_gid = (gid_t)check_gid;
 
   return NULL;
 }
@@ -175,10 +189,23 @@ static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
   if (err != NULL)
     return err;
 
-  // conf->default_uid = ap_uname2id(uid);
-  // conf->default_gid = ap_gname2id(gid);
-  conf->default_uid = (uid_t)atoi(uid);
-  conf->default_gid = (gid_t)atoi(gid);
+  unsigned long check_uid = (unsigned long)apr_atoi64(uid);
+
+  if(check_uid < 0 || check_uid > UINT_MAX){
+      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                   "%s ERROR %s:defuid of illegal value", MODULE_NAME, __func__);
+      return "defuid of illegal value";
+  }
+
+  unsigned long check_gid = (unsigned long)apr_atoi64(gid);
+  if(check_gid < 0 || check_gid > UINT_MAX){
+       ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                   "%s ERROR %s:defgid of illegal value", MODULE_NAME, __func__);
+       return "defgid of illegal value";
+  }
+
+  conf->default_uid = (uid_t)check_uid;
+  conf->default_gid = (gid_t)check_gid;
 
   return NULL;
 }
