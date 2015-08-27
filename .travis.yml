@@ -1,0 +1,45 @@
+language: c
+compiler:
+  - gcc
+  - clang
+before_install:
+  - sudo apt-get -qq update
+install:
+  - sudo apt-get -qq install rake bison libcurl4-openssl-dev libhiredis-dev libmarkdown2-dev libapr1-dev libaprutil1-dev apache2 libcap-dev
+env:
+  - HTTPD_VERSION=httpd-2.2.31
+    APR=apr-1.5.2 
+    APR_UTIL=apr-util-1.5.4 
+    HTTPD_TAR=${HTTPD_VERSION}.tar.gz 
+    APR_TAR=${APR}.tar.gz 
+    APR_UTIL_TAR=${APR_UTIL}.tar.gz 
+    HTTPD_CONFIG_OPT="--enable-module=all --enable-mods-shared=all"
+    APXS_CHECK_CMD="../${HTTPD_VERSION}/apache/bin/apachectl -v"
+  - HTTPD_VERSION=httpd-2.4.16 
+    APR=apr-1.5.2 
+    APR_UTIL=apr-util-1.5.4 
+    HTTPD_TAR=${HTTPD_VERSION}.tar.gz 
+    APR_TAR=${APR}.tar.gz 
+    APR_UTIL_TAR=${APR_UTIL}.tar.gz 
+    HTTPD_CONFIG_OPT=
+    APXS_CHECK_CMD="../${HTTPD_VERSION}/apache/bin/apachectl -v"
+before_script:
+  - cd ../
+  - wget http://ftp.jaist.ac.jp/pub/apache//httpd/${HTTPD_TAR}
+  - tar xf ${HTTPD_TAR}
+  - cd ${HTTPD_VERSION}/srclib
+  - wget http://ftp.jaist.ac.jp/pub/apache//apr/${APR_TAR}
+  - wget http://ftp.jaist.ac.jp/pub/apache//apr/${APR_UTIL_TAR}
+  - tar xf ${APR_TAR}
+  - tar xf ${APR_UTIL_TAR}
+  - ln -s ${APR} apr
+  - ln -s ${APR_UTIL} apr-util
+  - cd ..
+  - ./configure --prefix=`pwd`/apache --with-included-apr ${HTTPD_CONFIG_OPT}
+  - make
+  - make install
+  - cd ../mod_process_security
+script:
+  - echo ${APXS_CHECK_CMD}
+  - ${APXS_CHECK_CMD}
+  - make APXS=../${HTTPD_VERSION}/apache/bin/apxs
