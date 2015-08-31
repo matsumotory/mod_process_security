@@ -90,6 +90,7 @@ typedef struct {
   int all_ext_enable;
   int all_cgi_enable;
   u_int root_enable;
+  u_int cap_dac_override_enable;
   uid_t default_uid;
   gid_t default_gid;
   uid_t min_uid;
@@ -125,6 +126,7 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->all_ext_enable = OFF;
   conf->all_cgi_enable = OFF;
   conf->root_enable = OFF;
+  conf->cap_dac_override_enable = OFF;
   conf->extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->handlers = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->ignore_extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
@@ -252,6 +254,20 @@ static const char *set_root_enable(cmd_parms *cmd, void *mconfig, int flag)
   return NULL;
 }
 
+static const char *set_cap_dac_override(cmd_parms *cmd, void *mconfig, int flag)
+{
+  process_security_config_t *conf = ap_get_module_config(
+      cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+
+  if (err != NULL)
+    return err;
+
+  conf->cap_dac_override_enable = flag;
+
+  return NULL;
+}
+
 static const char *set_extensions(cmd_parms *cmd, void *mconfig,
                                   const char *arg)
 {
@@ -321,11 +337,20 @@ static void process_security_child_init(apr_pool_t *p, server_rec *server)
   cap_t cap;
   cap_value_t capval[3];
 
-  ncap = 2;
+  process_security_config_t *conf =
+      ap_get_module_config(server->module_config, &process_security_module);
 
-  cap = cap_init();
   capval[0] = CAP_SETUID;
   capval[1] = CAP_SETGID;
+
+  if(conf->cap_dac_override_enable == ON){
+     ncap = 3;
+     capval[2] = CAP_DAC_OVERRIDE;
+  }else{
+     ncap = 2;
+  }
+
+  cap = cap_init();
   cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_SET);
   cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
 
@@ -525,6 +550,8 @@ static const command_rec process_security_cmds[] = {
                  "Set Enable All CGI Extensions On / Off. (default Off)"),
     AP_INIT_FLAG("PSRootEnable", set_root_enable, NULL, ACCESS_CONF | RSRC_CONF,
                  "Enable run with root owner On / Off. (default On)"),
+    AP_INIT_FLAG("PSCapDacOverride", set_cap_dac_override, NULL, ACCESS_CONF | RSRC_CONF,
+                 "Enable CAP_DAC_OVERRIDE of capabillity ON / Off. (default Off)"),
     AP_INIT_TAKE1("PSMode", set_mode, NULL, RSRC_CONF | ACCESS_CONF,
                   "stat only. you can custmize this code."),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF,
