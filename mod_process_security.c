@@ -315,6 +315,27 @@ static int process_security_init(apr_pool_t *p, apr_pool_t *plog,
   return OK;
 }
 
+static void process_security_child_init(apr_pool_t *p, server_rec *server)
+{
+  int ncap;
+  cap_t cap;
+  cap_value_t capval[3];
+
+  ncap = 2;
+
+  cap = cap_init();
+  capval[0] = CAP_SETUID;
+  capval[1] = CAP_SETGID;
+  cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_SET);
+  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
+
+  if (cap_set_proc(cap) != 0)
+      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                       "%s ERROR %s:cap_set_proc failed", MODULE_NAME, __func__);
+
+  cap_free(cap);
+}
+
 static int process_security_set_cap(request_rec *r)
 {
 
@@ -521,6 +542,7 @@ static const command_rec process_security_cmds[] = {
 static void register_hooks(apr_pool_t *p)
 {
   ap_hook_post_config(process_security_init, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_child_init(process_security_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(process_security_handler, NULL, NULL, APR_HOOK_REALLY_FIRST);
 }
 
