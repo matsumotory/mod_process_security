@@ -300,7 +300,6 @@ static void process_security_child_init(apr_pool_t *p, server_rec *server)
 
   cap = cap_init();
   cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_SET);
-  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
 
   if (cap_set_proc(cap) != 0)
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed", MODULE_NAME, __func__);
