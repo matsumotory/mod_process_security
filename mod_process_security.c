@@ -136,8 +136,7 @@ static void *create_config(apr_pool_t *p, server_rec *s)
 
 static const char *set_mode(cmd_parms *cmd, void *mconfig, const char *arg)
 {
-  process_security_dir_config_t *dconf =
-      (process_security_dir_config_t *)mconfig;
+  process_security_dir_config_t *dconf = (process_security_dir_config_t *)mconfig;
   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
 
   if (err != NULL)
@@ -148,29 +147,24 @@ static const char *set_mode(cmd_parms *cmd, void *mconfig, const char *arg)
   return NULL;
 }
 
-static const char *set_minuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
-                                 const char *gid)
+static const char *set_minuidgid(cmd_parms *cmd, void *mconfig, const char *uid, const char *gid)
 {
-  process_security_config_t *conf = ap_get_module_config(
-      cmd->server->module_config, &process_security_module);
-  const char *err =
-      ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
 
   if (err != NULL)
     return err;
 
   unsigned long check_uid = (unsigned long)apr_atoi64(uid);
 
-  if(check_uid > UINT_MAX){
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                 "%s ERROR %s:minuid of illegal value", MODULE_NAME, __func__);
+  if (check_uid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:minuid of illegal value", MODULE_NAME, __func__);
     return "minuid of illegal value";
   }
 
   unsigned long check_gid = (unsigned long)apr_atoi64(gid);
-  if(check_gid > UINT_MAX){
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                 "%s ERROR %s:mingid of illegal value", MODULE_NAME, __func__);
+  if (check_gid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:mingid of illegal value", MODULE_NAME, __func__);
     return "mingid of illegal value";
   }
 
@@ -180,30 +174,25 @@ static const char *set_minuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
   return NULL;
 }
 
-static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
-                                 const char *gid)
+static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid, const char *gid)
 {
-  process_security_config_t *conf = ap_get_module_config(
-      cmd->server->module_config, &process_security_module);
-  const char *err =
-      ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
 
   if (err != NULL)
     return err;
 
   unsigned long check_uid = (unsigned long)apr_atoi64(uid);
 
-  if(check_uid > UINT_MAX){
-      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                   "%s ERROR %s:defuid of illegal value", MODULE_NAME, __func__);
-      return "defuid of illegal value";
+  if (check_uid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defuid of illegal value", MODULE_NAME, __func__);
+    return "defuid of illegal value";
   }
 
   unsigned long check_gid = (unsigned long)apr_atoi64(gid);
-  if(check_gid > UINT_MAX){
-       ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                   "%s ERROR %s:defgid of illegal value", MODULE_NAME, __func__);
-       return "defgid of illegal value";
+  if (check_gid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defgid of illegal value", MODULE_NAME, __func__);
+    return "defgid of illegal value";
   }
 
   conf->default_uid = (uid_t)check_uid;
@@ -214,8 +203,7 @@ static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
 
 static const char *set_all_ext(cmd_parms *cmd, void *mconfig, int flag)
 {
-  process_security_config_t *conf = ap_get_module_config(
-      cmd->server->module_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
 
   if (err != NULL)
@@ -228,8 +216,7 @@ static const char *set_all_ext(cmd_parms *cmd, void *mconfig, int flag)
 
 static const char *set_all_cgi(cmd_parms *cmd, void *mconfig, int flag)
 {
-  process_security_config_t *conf = ap_get_module_config(
-      cmd->server->module_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
 
   if (err != NULL)
@@ -242,8 +229,7 @@ static const char *set_all_cgi(cmd_parms *cmd, void *mconfig, int flag)
 
 static const char *set_root_enable(cmd_parms *cmd, void *mconfig, int flag)
 {
-  process_security_config_t *conf = ap_get_module_config(
-      cmd->server->module_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
 
   if (err != NULL)
@@ -256,8 +242,7 @@ static const char *set_root_enable(cmd_parms *cmd, void *mconfig, int flag)
 
 static const char *set_cap_dac_override(cmd_parms *cmd, void *mconfig, int flag)
 {
-  process_security_config_t *conf = ap_get_module_config(
-      cmd->server->module_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
 
   if (err != NULL)
@@ -268,11 +253,9 @@ static const char *set_cap_dac_override(cmd_parms *cmd, void *mconfig, int flag)
   return NULL;
 }
 
-static const char *set_extensions(cmd_parms *cmd, void *mconfig,
-                                  const char *arg)
+static const char *set_extensions(cmd_parms *cmd, void *mconfig, const char *arg)
 {
-  process_security_config_t *conf = ap_get_module_config(
-      cmd->server->module_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
 
   if (err != NULL)
@@ -285,8 +268,7 @@ static const char *set_extensions(cmd_parms *cmd, void *mconfig,
 
 static const char *set_handlers(cmd_parms *cmd, void *mconfig, const char *arg)
 {
-  process_security_config_t *conf = ap_get_module_config(
-      cmd->server->module_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
 
   if (err != NULL)
@@ -297,11 +279,9 @@ static const char *set_handlers(cmd_parms *cmd, void *mconfig, const char *arg)
   return NULL;
 }
 
-static const char *set_ignore_extensions(cmd_parms *cmd, void *mconfig,
-                                         const char *arg)
+static const char *set_ignore_extensions(cmd_parms *cmd, void *mconfig, const char *arg)
 {
-  process_security_config_t *conf = ap_get_module_config(
-      cmd->server->module_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
 
   if (err != NULL)
@@ -312,8 +292,7 @@ static const char *set_ignore_extensions(cmd_parms *cmd, void *mconfig,
   return NULL;
 }
 
-static int process_security_init(apr_pool_t *p, apr_pool_t *plog,
-                                 apr_pool_t *ptemp, server_rec *s)
+static int process_security_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
 {
   void *data;
   const char *userdata_key = "process_security_init";
@@ -322,11 +301,9 @@ static int process_security_init(apr_pool_t *p, apr_pool_t *plog,
   apr_pool_userdata_get(&data, userdata_key, s->process->pool);
 
   if (!data)
-    apr_pool_userdata_set((const void *)1, userdata_key, apr_pool_cleanup_null,
-                          s->process->pool);
+    apr_pool_userdata_set((const void *)1, userdata_key, apr_pool_cleanup_null, s->process->pool);
   else
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-                 MODULE_NAME "/" MODULE_VERSION " mechanism enabled");
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, MODULE_NAME "/" MODULE_VERSION " mechanism enabled");
 
   return OK;
 }
@@ -337,17 +314,16 @@ static void process_security_child_init(apr_pool_t *p, server_rec *server)
   cap_t cap;
   cap_value_t capval[3];
 
-  process_security_config_t *conf =
-      ap_get_module_config(server->module_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(server->module_config, &process_security_module);
 
   capval[0] = CAP_SETUID;
   capval[1] = CAP_SETGID;
 
-  if(conf->cap_dac_override_enable == ON){
-     ncap = 3;
-     capval[2] = CAP_DAC_OVERRIDE;
-  }else{
-     ncap = 2;
+  if (conf->cap_dac_override_enable == ON) {
+    ncap = 3;
+    capval[2] = CAP_DAC_OVERRIDE;
+  } else {
+    ncap = 2;
   }
 
   cap = cap_init();
@@ -355,8 +331,7 @@ static void process_security_child_init(apr_pool_t *p, server_rec *server)
   cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
 
   if (cap_set_proc(cap) != 0)
-      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                       "%s ERROR %s:cap_set_proc failed", MODULE_NAME, __func__);
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed", MODULE_NAME, __func__);
 
   cap_free(cap);
 }
@@ -372,13 +347,10 @@ static int process_security_set_cap(request_rec *r)
 
   ncap = 2;
 
-  process_security_dir_config_t *dconf =
-      ap_get_module_config(r->per_dir_config, &process_security_module);
-  process_security_config_t *conf =
-      ap_get_module_config(r->server->module_config, &process_security_module);
+  process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
-  if (dconf->process_security_mode == PS_MODE_STAT ||
-      dconf->process_security_mode == PS_MODE_UNDEFINED) {
+  if (dconf->process_security_mode == PS_MODE_STAT || dconf->process_security_mode == PS_MODE_UNDEFINED) {
     gid = r->finfo.group;
     uid = r->finfo.user;
   } else {
@@ -387,18 +359,15 @@ static int process_security_set_cap(request_rec *r)
   }
 
   if (!conf->root_enable && (uid == 0 || gid == 0)) {
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-                 "%s NOTICE %s: permission of %s is root, can't run the file",
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: permission of %s is root, can't run the file",
                  MODULE_NAME, __func__, r->filename);
     return -1;
   }
 
   if (uid < conf->min_uid || gid < conf->min_gid) {
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-                 "%s NOTICE %s: uidgid(uid=%d gid=%d) of %s is less than "
-                 "min_uidgid(min_uid=%d min_gid=%d), can't run the file",
-                 MODULE_NAME, __func__, uid, gid, r->filename, conf->min_uid,
-                 conf->min_gid);
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: uidgid(uid=%d gid=%d) of %s is less than "
+                                                    "min_uidgid(min_uid=%d min_gid=%d), can't run the file",
+                 MODULE_NAME, __func__, uid, gid, r->filename, conf->min_uid, conf->min_gid);
     return -1;
   }
 
@@ -408,8 +377,7 @@ static int process_security_set_cap(request_rec *r)
   cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_SET);
 
   if (cap_set_proc(cap) != 0)
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                 "%s ERROR %s:cap_set_proc failed", MODULE_NAME, __func__);
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed", MODULE_NAME, __func__);
 
   cap_free(cap);
   coredump = prctl(PR_GET_DUMPABLE);
@@ -418,8 +386,7 @@ static int process_security_set_cap(request_rec *r)
   cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
 
   if (cap_set_proc(cap) != 0)
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                 "%s ERROR %s:cap_set_proc failed before setuid", MODULE_NAME,
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed before setuid", MODULE_NAME,
                  __func__);
 
   cap_free(cap);
@@ -437,9 +404,7 @@ static int process_security_set_cap(request_rec *r)
   cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_CLEAR);
   cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_CLEAR);
   if (cap_set_proc(cap) != 0) {
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                 "%s ERROR %s:cap_set_proc failed after setuid", MODULE_NAME,
-                 __func__);
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed after setuid", MODULE_NAME, __func__);
   }
   cap_free(cap);
 
@@ -449,8 +414,7 @@ static int process_security_set_cap(request_rec *r)
   return OK;
 }
 
-static void *APR_THREAD_FUNC
-process_security_thread_handler(apr_thread_t *thread, void *data)
+static void *APR_THREAD_FUNC process_security_thread_handler(apr_thread_t *thread, void *data)
 {
   request_rec *r = (request_rec *)data;
   int result;
@@ -481,8 +445,7 @@ static int process_security_handler(request_rec *r)
   int enable = 0;
   int name_len = 0;
 
-  process_security_config_t *conf =
-      ap_get_module_config(r->server->module_config, &process_security_module);
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
   // check a target file for process_security
   if (thread_on)
@@ -520,21 +483,17 @@ static int process_security_handler(request_rec *r)
   apr_threadattr_create(&thread_attr, r->pool);
   apr_threadattr_detach_set(thread_attr, 0);
 
-  status = apr_thread_create(&thread, thread_attr,
-                             process_security_thread_handler, r, r->pool);
+  status = apr_thread_create(&thread, thread_attr, process_security_thread_handler, r, r->pool);
 
   if (status != APR_SUCCESS) {
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                 "%s ERROR %s: Unable to create a thread", MODULE_NAME,
-                 __func__);
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to create a thread", MODULE_NAME, __func__);
     return HTTP_INTERNAL_SERVER_ERROR;
   }
 
   status = apr_thread_join(&thread_status, thread);
 
   if (status != APR_SUCCESS) {
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                 "%s ERROR %s: Unable to join a thread", MODULE_NAME, __func__);
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to join a thread", MODULE_NAME, __func__);
     r->connection->aborted = 1;
     return HTTP_INTERNAL_SERVER_ERROR;
   }
@@ -552,18 +511,13 @@ static const command_rec process_security_cmds[] = {
                  "Enable run with root owner On / Off. (default On)"),
     AP_INIT_FLAG("PSCapDacOverride", set_cap_dac_override, NULL, ACCESS_CONF | RSRC_CONF,
                  "Enable CAP_DAC_OVERRIDE of capabillity ON / Off. (default Off)"),
-    AP_INIT_TAKE1("PSMode", set_mode, NULL, RSRC_CONF | ACCESS_CONF,
-                  "stat only. you can custmize this code."),
-    AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF,
-                  "Minimal uid and gid."),
-    AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF,
-                  "Default uid and gid."),
-    AP_INIT_ITERATE("PSExtensions", set_extensions, NULL,
-                    ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
-    AP_INIT_ITERATE("PSHandlers", set_handlers, NULL, ACCESS_CONF | RSRC_CONF,
-                    "Set Enable handlers."),
-    AP_INIT_ITERATE("PSIgnoreExtensions", set_ignore_extensions, NULL,
-                    ACCESS_CONF | RSRC_CONF, "Set Ignore Extensions."),
+    AP_INIT_TAKE1("PSMode", set_mode, NULL, RSRC_CONF | ACCESS_CONF, "stat only. you can custmize this code."),
+    AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
+    AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
+    AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
+    AP_INIT_ITERATE("PSHandlers", set_handlers, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable handlers."),
+    AP_INIT_ITERATE("PSIgnoreExtensions", set_ignore_extensions, NULL, ACCESS_CONF | RSRC_CONF,
+                    "Set Ignore Extensions."),
     {NULL}};
 
 static void register_hooks(apr_pool_t *p)
