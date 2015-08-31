@@ -1,49 +1,31 @@
 /*
-// -------------------------------------------------------------------
-// mod_process_security
-//      This module is a suEXEC module for CGI and DSO.
-//          Improvement of mod_ruid2(vulnerability) and mod_suexec(performance).
-//
-//      By matsumoto_r (MATSUMOTO, Ryosuke) Sep 2011 in Japan
-//          Academic Center for Computing and Media Studies, Kyoto University
-//          Okabe Lab
-//          email: matsumoto_r at net.ist.i.kyoto-u.ac.jp
-//
-// Date     2011/11/11
-// Version  1.00
-//
-// change log
-//  2011/11/11 1.00 matsumoto_r first release
-// -------------------------------------------------------------------
-
-// -------------------------------------------------------------------
-// How To Compile
-// [Use DSO]
-// apxs -i -c -l cap mod_process_security.c
-//
-// <add to httpd.conf or conf.d/process_security.conf>
-// LoadModule process_security_module   modules/mod_process_security.so
-// PSExAll On
-//
-// -------------------------------------------------------------------
-
-// -------------------------------------------------------------------
-// How To Use
-//
-//  * Set Enable All Extensions On. (default Off)
-//      PSExAll On
-//
-//  * [Optional] Set Enable Custom Extensions. (unset PSExAll)
-//      PSExtensions .php .pl .py
-//
-//  * [Optional] Minimal uid and gid. (default uid:100 gid:100)
-//      PSMinUidGid 200 200
-//
-//  * [Optional] Default uid and gid. (default uid:48 gid:48)
-//      PSDefaultUidGid
-//
-// -------------------------------------------------------------------
+** mod_process_security - a suEXEC module for CGI and DSO.
+**    Improvement of mod_ruid2(vulnerability) and mod_suexec(performance).
+**
+** Copyright (c) MATSUMOTO Ryosuke 2015 -
+**
+** Permission is hereby granted, free of charge, to any person obtaining
+** a copy of this software and associated documentation files (the
+** "Software"), to deal in the Software without restriction, including
+** without limitation the rights to use, copy, modify, merge, publish,
+** distribute, sublicense, and/or sell copies of the Software, and to
+** permit persons to whom the Software is furnished to do so, subject to
+** the following conditions:
+**
+** The above copyright notice and this permission notice shall be
+** included in all copies or substantial portions of the Software.
+**
+** THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+** SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+**
+** [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 */
+
 
 #define CORE_PRIVATE
 
