@@ -26,7 +26,6 @@
 ** [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 */
 
-
 #define CORE_PRIVATE
 
 #include "apr_strings.h"
@@ -474,11 +473,10 @@ static void register_hooks(apr_pool_t *p)
 }
 
 module AP_MODULE_DECLARE_DATA process_security_module = {
-    STANDARD20_MODULE_STUFF,
-    NULL,                                       /* dir config creater */
-    NULL,                                       /* dir merger */
-    create_config,                              /* server config */
-    NULL,                                       /* merge server config */
-    process_security_cmds,                      /* command apr_table_t */
-    register_hooks                              /* register hooks */
+    STANDARD20_MODULE_STUFF, NULL, /* dir config creater */
+    NULL,                          /* dir merger */
+    create_config,                 /* server config */
+    NULL,                          /* merge server config */
+    process_security_cmds,         /* command apr_table_t */
+    register_hooks                 /* register hooks */
 };
