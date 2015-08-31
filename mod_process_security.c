@@ -81,12 +81,6 @@
 
 typedef struct {
 
-  int8_t process_security_mode;
-
-} process_security_dir_config_t;
-
-typedef struct {
-
   int all_ext_enable;
   int all_cgi_enable;
   u_int root_enable;
@@ -106,15 +100,6 @@ module AP_MODULE_DECLARE_DATA process_security_module;
 static int coredump;
 static int __thread volatile thread_on = 0;
 
-static void *create_dir_config(apr_pool_t *p, char *d)
-{
-  process_security_dir_config_t *dconf = apr_pcalloc(p, sizeof(*dconf));
-
-  dconf->process_security_mode = PS_MODE_UNDEFINED;
-
-  return dconf;
-}
-
 static void *create_config(apr_pool_t *p, server_rec *s)
 {
   process_security_config_t *conf = apr_palloc(p, sizeof(*conf));
@@ -132,19 +117,6 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->ignore_extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
 
   return conf;
-}
-
-static const char *set_mode(cmd_parms *cmd, void *mconfig, const char *arg)
-{
-  process_security_dir_config_t *dconf = (process_security_dir_config_t *)mconfig;
-  const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
-
-  if (err != NULL)
-    return err;
-
-  dconf->process_security_mode = PS_MODE_STAT;
-
-  return NULL;
 }
 
 static const char *set_minuidgid(cmd_parms *cmd, void *mconfig, const char *uid, const char *gid)
@@ -347,16 +319,10 @@ static int process_security_set_cap(request_rec *r)
 
   ncap = 2;
 
-  process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
-  if (dconf->process_security_mode == PS_MODE_STAT || dconf->process_security_mode == PS_MODE_UNDEFINED) {
-    gid = r->finfo.group;
-    uid = r->finfo.user;
-  } else {
-    gid = conf->default_gid;
-    uid = conf->default_uid;
-  }
+  gid = r->finfo.group;
+  uid = r->finfo.user;
 
   if (!conf->root_enable && (uid == 0 || gid == 0)) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: permission of %s is root, can't run the file",
@@ -511,7 +477,6 @@ static const command_rec process_security_cmds[] = {
                  "Enable run with root owner On / Off. (default On)"),
     AP_INIT_FLAG("PSCapDacOverride", set_cap_dac_override, NULL, ACCESS_CONF | RSRC_CONF,
                  "Enable CAP_DAC_OVERRIDE of capabillity ON / Off. (default Off)"),
-    AP_INIT_TAKE1("PSMode", set_mode, NULL, RSRC_CONF | ACCESS_CONF, "stat only. you can custmize this code."),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
     AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
@@ -528,7 +493,8 @@ static void register_hooks(apr_pool_t *p)
 }
 
 module AP_MODULE_DECLARE_DATA process_security_module = {
-    STANDARD20_MODULE_STUFF, create_dir_config, /* dir config creater */
+    STANDARD20_MODULE_STUFF,
+    NULL,                                       /* dir config creater */
     NULL,                                       /* dir merger */
     create_config,                              /* server config */
     NULL,                                       /* merge server config */
