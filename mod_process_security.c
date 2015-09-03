@@ -66,6 +66,7 @@ typedef struct {
   int all_cgi_enable;
   u_int root_enable;
   u_int cap_dac_override_enable;
+  u_int keep_open_enable;
   uid_t default_uid;
   gid_t default_gid;
   uid_t min_uid;
@@ -93,6 +94,7 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->all_cgi_enable = OFF;
   conf->root_enable = OFF;
   conf->cap_dac_override_enable = OFF;
+  conf->keep_open_enable = OFF;
   conf->extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->handlers = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->ignore_extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
@@ -202,6 +204,19 @@ static const char *set_cap_dac_override(cmd_parms *cmd, void *mconfig, int flag)
     return err;
 
   conf->cap_dac_override_enable = flag;
+
+  return NULL;
+}
+
+static const char *set_keep_open(cmd_parms *cmd, void *mconfig, int flag)
+{
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+
+  if (err != NULL)
+    return err;
+
+  conf->keep_open_enable = flag;
 
   return NULL;
 }
@@ -363,14 +378,26 @@ static int process_security_set_cap(request_rec *r)
 static void *APR_THREAD_FUNC process_security_thread_handler(apr_thread_t *thread, void *data)
 {
   request_rec *r = (request_rec *)data;
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
   int result;
+  int fd = -1;
 
   thread_on = 1;
 
   if (process_security_set_cap(r) < 0)
     apr_thread_exit(thread, HTTP_INTERNAL_SERVER_ERROR);
 
+  if (conf->keep_open_enable == ON) {
+    fd = open(r->filename, O_RDONLY);
+    if (fd == -1)
+      apr_thread_exit(thread, HTTP_INTERNAL_SERVER_ERROR);
+  }
+
   result = ap_run_handler(r);
+
+  if (conf->keep_open_enable == ON) {
+    close(fd);
+  }
 
   if (result == DECLINED)
     result = HTTP_INTERNAL_SERVER_ERROR;
@@ -457,6 +484,8 @@ static const command_rec process_security_cmds[] = {
                  "Enable run with root owner On / Off. (default On)"),
     AP_INIT_FLAG("PSCapDacOverride", set_cap_dac_override, NULL, ACCESS_CONF | RSRC_CONF,
                  "Enable CAP_DAC_OVERRIDE of capabillity ON / Off. (default Off)"),
+    AP_INIT_FLAG("PSKeepOpenFile", set_keep_open, NULL, ACCESS_CONF | RSRC_CONF,
+                 "Enable keeping open file before handler for operation ON / Off. (default Off)"),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
     AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
