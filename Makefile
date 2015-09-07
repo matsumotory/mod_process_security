@@ -8,7 +8,7 @@ TARGET=mod_process_security.c
 
 #   the used tools
 APXS=apxs
-APACHECTL=/etc/init.d/httpd
+APACHECTL=apachectl
 #APXS=/usr/local/apache2.4/bin/apxs
 #APACHECTL=/usr/local/apache2.4/bin/apachectl
 
@@ -34,14 +34,15 @@ install: all
 clean:
 	-rm -rf .libs *.o *.so *.lo *.la *.slo *.loT
 
-#   reload the module by installing and restarting Apache
-reload: install restart
-
-#   the general Apache start/restart/stop procedures
 start:
-	$(APACHECTL) start
+	$(APACHECTL) -k start
 restart:
-	$(APACHECTL) restart
+	$(APACHECTL) -k restart
 stop:
-	$(APACHECTL) stop
+	$(APACHECTL) -k stop
+
+test:
+	curl http://127.0.0.1:8080/cgi-bin/id.cgi | grep -q "500:500"
+
+.PHONY: test
 

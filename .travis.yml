@@ -8,21 +8,23 @@ install:
   - sudo apt-get -qq install rake bison libcurl4-openssl-dev libhiredis-dev libmarkdown2-dev libapr1-dev libaprutil1-dev apache2 libcap-dev
 env:
   - HTTPD_VERSION=httpd-2.2.31
+    HTTPD_CONFIG_OPT="--with-mpm=prefork --enable-module=all --enable-mods-shared=all"
     APR=apr-1.5.2 
     APR_UTIL=apr-util-1.5.4 
     HTTPD_TAR=${HTTPD_VERSION}.tar.gz 
     APR_TAR=${APR}.tar.gz 
     APR_UTIL_TAR=${APR_UTIL}.tar.gz 
-    HTTPD_CONFIG_OPT="--enable-module=all --enable-mods-shared=all"
     APXS_CHECK_CMD="../${HTTPD_VERSION}/apache/bin/apachectl -v"
+    VHOST_CONF="test/mod_process_security.conf.2.2"
   - HTTPD_VERSION=httpd-2.4.16 
+    HTTPD_CONFIG_OPT="--with-mpm=prefork"
     APR=apr-1.5.2 
     APR_UTIL=apr-util-1.5.4 
     HTTPD_TAR=${HTTPD_VERSION}.tar.gz 
     APR_TAR=${APR}.tar.gz 
     APR_UTIL_TAR=${APR_UTIL}.tar.gz 
-    HTTPD_CONFIG_OPT=
     APXS_CHECK_CMD="../${HTTPD_VERSION}/apache/bin/apachectl -v"
+    VHOST_CONF="test/mod_process_security.conf.2.4"
 before_script:
   - cd ../
   - wget http://ftp.jaist.ac.jp/pub/apache//httpd/${HTTPD_TAR}
@@ -39,7 +41,14 @@ before_script:
   - make
   - make install
   - cd ../mod_process_security
-script:
   - echo ${APXS_CHECK_CMD}
   - ${APXS_CHECK_CMD}
-  - make APXS=../${HTTPD_VERSION}/apache/bin/apxs
+  - sudo chown 500.500 test/id.cgi
+  - sudo chmod 755 test/id.cgi
+  - sudo cp test/id.cgi $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/
+  - sudo sed -i "s/^Listen/#Listen/" $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+  - sudo cat ${VHOST_CONF} >> $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+  - sudo make APXS=../${HTTPD_VERSION}/apache/bin/apxs APACHECTL=../${HTTPD_VERSION}/apache/bin/apachectl install
+  - sudo make APXS=../${HTTPD_VERSION}/apache/bin/apxs APACHECTL=../${HTTPD_VERSION}/apache/bin/apachectl restart
+script:
+  - make APXS=../${HTTPD_VERSION}/apache/bin/apxs test
