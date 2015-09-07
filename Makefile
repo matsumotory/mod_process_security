@@ -42,7 +42,7 @@ stop:
 	$(APACHECTL) -k stop
 
 test:
-	curl http://127.0.0.1:8080/cgi-bin/id.cgi | grep -q "500:500:500"
+	curl -s http://127.0.0.1:8080/cgi-bin/id.cgi | grep -q "500:500:500"
 
 .PHONY: test
 
