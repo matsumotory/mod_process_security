@@ -54,6 +54,9 @@ script:
   - sudo ls -la $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/
   - sudo netstat -lnpt
   - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+
+  # test
   - make APXS=../${HTTPD_VERSION}/apache/bin/apxs test
+
   # debug
   - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_logfiledir)/error_log
