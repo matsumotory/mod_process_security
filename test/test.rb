@@ -16,4 +16,6 @@ class Test4MTest < MTest::Unit::TestCase
   end
 end
 
-MTest::Unit.new.run
+status = MTest::Unit.new.run
+
+raise if status.to_i > 0
