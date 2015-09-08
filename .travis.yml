@@ -45,18 +45,18 @@ before_script:
   - sudo chown 500.500 test/id.cgi
   - sudo chmod 755 test/id.cgi
   - sudo cp -p test/id.cgi $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/.
-  - sed -i "s/^Listen/#Listen/" $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
-  - cat ${VHOST_CONF} >> $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
-  - make APXS=../${HTTPD_VERSION}/apache/bin/apxs APACHECTL=../${HTTPD_VERSION}/apache/bin/apachectl install
-  - make APXS=../${HTTPD_VERSION}/apache/bin/apxs APACHECTL=../${HTTPD_VERSION}/apache/bin/apachectl restart
+  - sudo sed -i "s/^Listen/#Listen/" $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+  - sudo cat ${VHOST_CONF} >> $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+  - sudo make APXS=../${HTTPD_VERSION}/apache/bin/apxs APACHECTL=../${HTTPD_VERSION}/apache/bin/apachectl install
+  - sudo make APXS=../${HTTPD_VERSION}/apache/bin/apxs APACHECTL=../${HTTPD_VERSION}/apache/bin/apachectl restart
 script:
   # debug
-  - ls -la $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/
-  - netstat -lnpt
-  - cat $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+  - sudo ls -la $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/
+  - sudo netstat -lnpt
+  - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
 
   # test
   - make APXS=../${HTTPD_VERSION}/apache/bin/apxs test
 
   # debug
-  - cat $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_logfiledir)/error_log
+  - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_logfiledir)/error_log
