@@ -42,9 +42,17 @@ before_script:
   - cd ../mod_process_security
   - echo ${APXS_CHECK_CMD}
   - ${APXS_CHECK_CMD}
+
+  # setup test : TODO: use scripts
   - sudo chown 500.500 test/id.cgi
   - sudo chmod 755 test/id.cgi
   - sudo cp -p test/id.cgi $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/.
+
+  - sudo chown 600.700 test/id2.cgi
+  - sudo chmod 700 test/id2.cgi
+  - sudo cp -p test/id2.cgi $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/.
+
+  # setup server config
   - sudo sed -i "s/^Listen/#Listen/" $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
   - sudo cat ${VHOST_CONF} >> $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
   - sudo make APXS=../${HTTPD_VERSION}/apache/bin/apxs APACHECTL=../${HTTPD_VERSION}/apache/bin/apachectl install

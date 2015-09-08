@@ -13,6 +13,9 @@ class Test4MTest < MTest::Unit::TestCase
   def test_cgi_priviledge
     res = fetch "/cgi-bin/id.cgi"
     assert_equal "500:500:500", res["body"]
+
+    res = fetch "/cgi-bin/id2.cgi"
+    assert_equal "600:700:700", res["body"]
   end
 end
 
