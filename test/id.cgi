@@ -6,4 +6,4 @@ uid=`id -u`
 gid=`id -g`
 groups=`id -G`
 
-echo "$uid:$gid:$groups"
+echo -n "$uid:$gid:$groups"
