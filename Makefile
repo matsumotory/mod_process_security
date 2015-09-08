@@ -42,7 +42,9 @@ stop:
 	$(APACHECTL) -k stop
 
 test:
-	curl -s http://127.0.0.1:8080/cgi-bin/id.cgi | grep -q "500:500:500"
+	cd test/ && git clone --depth=1 git://github.com/mruby/mruby.git
+	cd test/mruby && MRUBY_CONFIG=../build_config.rb rake
+	cd test/ && ./mruby/bin/mruby test.rb
 
 .PHONY: test
 
