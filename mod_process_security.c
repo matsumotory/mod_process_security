@@ -337,8 +337,11 @@ static int process_security_set_cap(request_rec *r)
   capval[1] = CAP_SETGID;
   cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_SET);
 
-  if (cap_set_proc(cap) != 0)
+  if (cap_set_proc(cap) != 0) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed", MODULE_NAME, __func__);
+    cap_free(cap);
+    return -1;
+  }
 
   cap_free(cap);
   coredump = prctl(PR_GET_DUMPABLE);
@@ -346,9 +349,12 @@ static int process_security_set_cap(request_rec *r)
   cap = cap_get_proc();
   cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
 
-  if (cap_set_proc(cap) != 0)
+  if (cap_set_proc(cap) != 0) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed before setuid", MODULE_NAME,
                  __func__);
+    cap_free(cap);
+    return -1;
+  }
 
   cap_free(cap);
 
@@ -366,6 +372,8 @@ static int process_security_set_cap(request_rec *r)
   cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_CLEAR);
   if (cap_set_proc(cap) != 0) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed after setuid", MODULE_NAME, __func__);
+    cap_free(cap);
+    return -1;
   }
   cap_free(cap);
 
