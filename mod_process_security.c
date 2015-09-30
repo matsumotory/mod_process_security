@@ -432,6 +432,9 @@ static int process_security_handler(request_rec *r)
   if (thread_on)
     return DECLINED;
 
+  if (r->finfo.filetype == APR_NOFILE)
+    return DECLINED;
+
   if (conf->all_ext_enable) {
     enable = ON;
     for (i = 0; i < conf->ignore_extensions->nelts; i++) {
