@@ -523,7 +523,11 @@ static void register_hooks(apr_pool_t *p)
   ap_hook_handler(process_security_handler, NULL, NULL, APR_HOOK_REALLY_FIRST);
 }
 
+#ifdef __APACHE24__
+AP_DECLARE_MODULE(process_security) = {
+#else
 module AP_MODULE_DECLARE_DATA process_security_module = {
+#endif
     STANDARD20_MODULE_STUFF, NULL, /* dir config creater */
     NULL,                          /* dir merger */
     create_config,                 /* server config */
