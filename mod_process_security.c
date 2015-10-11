@@ -47,7 +47,7 @@
 #include <limits.h>
 
 #define MODULE_NAME "mod_process_security"
-#define MODULE_VERSION "1.0.3"
+#define MODULE_VERSION "1.0.4"
 #define PS_DEFAULT_UID 48
 #define PS_DEFAULT_GID 48
 #define PS_MIN_UID 100
