@@ -60,6 +60,16 @@
 #define ON 1
 #define OFF 0
 
+#if (AP_SERVER_MINORVERSION_NUMBER > 2)
+#define __APACHE24__
+#endif
+
+#ifdef __APACHE24__
+#include "http_main.h"
+#else
+#define ap_server_conf NULL
+#endif
+
 typedef struct {
 
   int all_ext_enable;
@@ -268,10 +278,11 @@ static int process_security_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *pt
   prctl(PR_SET_KEEPCAPS, 1);
   apr_pool_userdata_get(&data, userdata_key, s->process->pool);
 
-  if (!data)
+  if (!data) {
     apr_pool_userdata_set((const void *)1, userdata_key, apr_pool_cleanup_null, s->process->pool);
-  else
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, MODULE_NAME "/" MODULE_VERSION " mechanism enabled");
+  } else {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, ap_server_conf, MODULE_NAME "/" MODULE_VERSION " enabled");
+  }
 
   return OK;
 }
