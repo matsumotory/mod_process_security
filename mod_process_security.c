@@ -506,7 +506,7 @@ static int process_security_handler(request_rec *r)
     ap_unix_identity_t *ugid = ap_run_get_suexec_identity(r);
     if (ugid == NULL) {
       ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-          "%s ERROR %s: PSCheckSuexecids failed return 503: ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
+          "%s ERROR %s: PSCheckSuexecids failed return 500: ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
           MODULE_NAME, __func__);
       return HTTP_INTERNAL_SERVER_ERROR;
     }
