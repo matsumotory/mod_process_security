@@ -38,6 +38,7 @@
 #include "http_log.h"
 #include "http_protocol.h"
 #include "http_request.h"
+#include "unixd.h"
 #include "mpm_common.h"
 #include <sys/types.h>
 #include <unistd.h>
@@ -86,6 +87,21 @@ typedef struct {
   apr_array_header_t *ignore_extensions;
 
 } process_security_config_t;
+
+typedef struct {
+
+  u_int check_suexec_ids;
+
+} process_security_dir_config_t;
+
+static void *ps_create_dir_config(apr_pool_t *p, char *d)
+{
+  process_security_dir_config_t *dconf = apr_pcalloc(p, sizeof(process_security_dir_config_t));
+
+  dconf->check_suexec_ids = OFF;
+
+  return dconf;
+}
 
 module AP_MODULE_DECLARE_DATA process_security_module;
 
@@ -227,6 +243,15 @@ static const char *set_keep_open(cmd_parms *cmd, void *mconfig, int flag)
     return err;
 
   conf->keep_open_enable = flag;
+
+  return NULL;
+}
+
+static const char *set_check_suexec_ids(cmd_parms *cmd, void *mconfig, int flag)
+{
+  process_security_dir_config_t *dconf = (process_security_dir_config_t *)mconfig;
+
+  dconf->check_suexec_ids = flag;
 
   return NULL;
 }
@@ -433,11 +458,13 @@ static int process_security_handler(request_rec *r)
   apr_threadattr_t *thread_attr;
   apr_thread_t *thread;
   apr_status_t status, thread_status;
+  ap_unix_identity_t *ugid;
 
   int enable = 0;
   int name_len = 0;
 
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+  process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
 
   // check a target file for process_security
   if (thread_on)
@@ -475,6 +502,15 @@ static int process_security_handler(request_rec *r)
   if (!enable)
     return DECLINED;
 
+  // suexec ids check
+  ugid = ap_run_get_suexec_identity(r);
+  if (dconf->check_suexec_ids == ON && ugid != NULL && (ugid->uid != r->finfo.user || ugid->gid != r->finfo.group)) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+        "%s ERROR %s: PSCheckSuexecids return 403: opened r->filename=%s uid=%d gid=%d but suexec config uid=%d gid=%d",
+        MODULE_NAME, __func__, r->filename, r->finfo.user, r->finfo.group, ugid->uid, ugid->gid);
+    return HTTP_FORBIDDEN;
+  }
+
   apr_threadattr_create(&thread_attr, r->pool);
   apr_threadattr_detach_set(thread_attr, 0);
 
@@ -508,6 +544,9 @@ static const command_rec process_security_cmds[] = {
                  "Enable CAP_DAC_OVERRIDE of capabillity ON / Off. (default Off)"),
     AP_INIT_FLAG("PSKeepOpenFile", set_keep_open, NULL, ACCESS_CONF | RSRC_CONF,
                  "Enable keeping open file before handler for operation ON / Off. (default Off)"),
+    AP_INIT_FLAG("PSCheckSuexecids", set_check_suexec_ids, NULL, ACCESS_CONF | RSRC_CONF,
+                 "Set Enable Owner Check via suExecUserGgroup "
+                 " On / Off. (default Off)"),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
     AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
@@ -528,10 +567,10 @@ AP_DECLARE_MODULE(process_security) = {
 #else
 module AP_MODULE_DECLARE_DATA process_security_module = {
 #endif
-    STANDARD20_MODULE_STUFF, NULL, /* dir config creater */
-    NULL,                          /* dir merger */
-    create_config,                 /* server config */
-    NULL,                          /* merge server config */
-    process_security_cmds,         /* command apr_table_t */
-    register_hooks                 /* register hooks */
+    STANDARD20_MODULE_STUFF, ps_create_dir_config, /* dir config creater */
+    NULL,                                          /* dir merger */
+    create_config,                                 /* server config */
+    NULL,                                          /* merge server config */
+    process_security_cmds,                         /* command apr_table_t */
+    register_hooks                                 /* register hooks */
 };
