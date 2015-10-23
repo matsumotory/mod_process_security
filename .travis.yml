@@ -15,7 +15,7 @@ env:
     APR_UTIL_TAR=${APR_UTIL}.tar.gz 
     APXS_CHECK_CMD="../${HTTPD_VERSION}/apache/bin/apachectl -v"
     VHOST_CONF="test/mod_process_security.conf.2.2"
-  - HTTPD_VERSION=httpd-2.4.16 
+  - HTTPD_VERSION=httpd-2.4.17 
     HTTPD_CONFIG_OPT="--with-mpm=prefork"
     APR=apr-1.5.2 
     APR_UTIL=apr-util-1.5.4 
