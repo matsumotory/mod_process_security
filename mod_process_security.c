@@ -111,6 +111,7 @@ module AP_MODULE_DECLARE_DATA process_security_module;
 
 static int coredump;
 static int __thread volatile thread_on = 0;
+static int __thread volatile thread_webdav_on = 0;
 
 static void *create_config(apr_pool_t *p, server_rec *s)
 {
@@ -531,6 +532,10 @@ static int process_security_handler(request_rec *r)
   ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "DAV_DETECT : %d", conf->dav_detect);
   ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "PSDavUidGid : %d:%d", conf->dav_uid, conf->dav_gid);
 
+  if (conf->psdav_enable && conf->dav_detect){
+      return DECLINED;
+  }
+
   // check a target file for process_security
   if (thread_on)
     return DECLINED;
@@ -605,6 +610,164 @@ static int process_security_handler(request_rec *r)
   return thread_status;
 }
 
+static int process_security_webdav_set_cap(request_rec *r)
+{
+
+  int ncap;
+  cap_t cap;
+  cap_value_t capval[3];
+  gid_t gid;
+  uid_t uid;
+
+  ncap = 2;
+
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+
+  gid = conf->dav_gid;
+  uid = conf->dav_uid;
+
+  if (!conf->root_enable && (uid == 0 || gid == 0)) {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: permission of %s is root, can't run the file",
+                 MODULE_NAME, __func__, r->filename);
+    return -1;
+  }
+
+  if (uid < conf->min_uid || gid < conf->min_gid) {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: uidgid(uid=%d gid=%d) of %s is less than "
+                                                    "min_uidgid(min_uid=%d min_gid=%d), can't run the file",
+                 MODULE_NAME, __func__, uid, gid, r->filename, conf->min_uid, conf->min_gid);
+    return -1;
+  }
+
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_webdav_set_cap start");
+
+  cap = cap_init();
+  capval[0] = CAP_SETUID;
+  capval[1] = CAP_SETGID;
+  cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_SET);
+
+  if (cap_set_proc(cap) != 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed", MODULE_NAME, __func__);
+    cap_free(cap);
+    return -1;
+  }
+
+  cap_free(cap);
+  coredump = prctl(PR_GET_DUMPABLE);
+
+  cap = cap_get_proc();
+  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
+
+  if (cap_set_proc(cap) != 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed before setuid", MODULE_NAME,
+                 __func__);
+    cap_free(cap);
+    return -1;
+  }
+
+  cap_free(cap);
+
+  int ret;
+  setgroups(0, NULL);
+  ret = setgid(gid);
+  if (ret < 0)
+    return ret;
+  ret = setuid(uid);
+  if (ret < 0)
+    return ret;
+
+  cap = cap_get_proc();
+  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_CLEAR);
+  cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_CLEAR);
+  if (cap_set_proc(cap) != 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed after setuid", MODULE_NAME, __func__);
+    cap_free(cap);
+    return -1;
+  }
+  cap_free(cap);
+
+  if (coredump)
+    prctl(PR_SET_DUMPABLE, 1);
+
+  return OK;
+}
+
+static void *APR_THREAD_FUNC process_security_webdav_thread_handler(apr_thread_t *thread, void *data)
+{
+  request_rec *r = (request_rec *)data;
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+  int result;
+
+  thread_webdav_on = 1;
+
+  if (process_security_webdav_set_cap(r) < 0)
+    apr_thread_exit(thread, HTTP_INTERNAL_SERVER_ERROR);
+ 
+  return NULL;
+}
+
+static int process_security_webdav_handler(request_rec *r)
+{
+  const char *extension, *handler;
+  apr_threadattr_t *thread_attr;
+  apr_thread_t *thread;
+  apr_status_t status, thread_status;
+  const char *key = "process_security_webdav_thread";
+
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+  process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
+
+  // check webdav mode
+  if (conf->psdav_enable == 0 || conf->dav_detect == 0){
+      return DECLINED;
+  }
+
+  if (thread_webdav_on)
+    return DECLINED;
+
+  apr_threadattr_create(&thread_attr, r->pool);
+  apr_threadattr_detach_set(thread_attr, 0);
+
+  status = apr_thread_create(&thread, thread_attr, process_security_webdav_thread_handler, r, r->pool);
+
+  if (status != APR_SUCCESS) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to create a thread", MODULE_NAME, __func__);
+    return HTTP_INTERNAL_SERVER_ERROR;
+  }
+
+  status = apr_thread_join(&thread_status, thread);
+
+  if (status != APR_SUCCESS) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to join a thread", MODULE_NAME, __func__);
+    r->connection->aborted = 1;
+    return HTTP_INTERNAL_SERVER_ERROR;
+  }
+
+  apr_pool_userdata_set((void *)thread, key, NULL, r->pool);
+
+  return thread_status;
+}
+
+static int process_security_webdav_finish(request_rec *r)
+{
+  void *data;
+  apr_thread_t *thread;
+  const char *key = "process_security_webdav_thread";
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+
+  if (conf->psdav_enable == 0 || conf->dav_detect == 0){
+      return DECLINED;
+  }
+
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_webdav_finish start");
+
+  apr_pool_userdata_get((void *)&data, key, r->pool);
+  thread = (apr_thread_t *)data;
+  apr_thread_exit(thread, APR_SUCCESS);
+
+  return OK; 
+}
+
 static const command_rec process_security_cmds[] = {
 
     AP_INIT_FLAG("PSExAll", set_all_ext, NULL, ACCESS_CONF | RSRC_CONF,
@@ -638,6 +801,8 @@ static void register_hooks(apr_pool_t *p)
   ap_hook_post_config(process_security_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(process_security_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(process_security_handler, NULL, NULL, APR_HOOK_REALLY_FIRST);
+  ap_hook_create_request(process_security_webdav_handler, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_log_transaction(process_security_webdav_finish, NULL, NULL, APR_HOOK_REALLY_FIRST);
 }
 
 #ifdef __APACHE24__
