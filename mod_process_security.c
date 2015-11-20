@@ -82,6 +82,10 @@ typedef struct {
   gid_t default_gid;
   uid_t min_uid;
   gid_t min_gid;
+  u_int psdav_enable;
+  u_int dav_detect;
+  uid_t dav_uid;
+  gid_t dav_gid;
   apr_array_header_t *extensions;
   apr_array_header_t *handlers;
   apr_array_header_t *ignore_extensions;
@@ -107,6 +111,7 @@ module AP_MODULE_DECLARE_DATA process_security_module;
 
 static int coredump;
 static int __thread volatile thread_on = 0;
+static int __thread volatile thread_webdav_on = 0;
 
 static void *create_config(apr_pool_t *p, server_rec *s)
 {
@@ -121,6 +126,10 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->root_enable = OFF;
   conf->cap_dac_override_enable = OFF;
   conf->keep_open_enable = OFF;
+  conf->psdav_enable = OFF;
+  conf->dav_detect = OFF;
+  conf->dav_uid = PS_DEFAULT_UID;
+  conf->dav_gid = PS_DEFAULT_GID;
   conf->extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->handlers = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->ignore_extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
@@ -178,6 +187,33 @@ static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
 
   conf->default_uid = (uid_t)check_uid;
   conf->default_gid = (gid_t)check_gid;
+
+  return NULL;
+}
+
+static const char *set_davuidgid(cmd_parms *cmd, void *mconfig, const char *uid, const char *gid)
+{
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
+
+  if (err != NULL)
+    return err;
+
+  unsigned long check_uid = (unsigned long)apr_atoi64(uid);
+
+  if (check_uid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defuid of illegal value", MODULE_NAME, __func__);
+    return "davuid of illegal value";
+  }
+
+  unsigned long check_gid = (unsigned long)apr_atoi64(gid);
+  if (check_gid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defgid of illegal value", MODULE_NAME, __func__);
+    return "davgid of illegal value";
+  }
+
+  conf->dav_uid = (uid_t)check_uid;
+  conf->dav_gid = (gid_t)check_gid;
 
   return NULL;
 }
@@ -252,6 +288,32 @@ static const char *set_check_suexec_ids(cmd_parms *cmd, void *mconfig, int flag)
   process_security_dir_config_t *dconf = (process_security_dir_config_t *)mconfig;
 
   dconf->check_suexec_ids = flag;
+
+  return NULL;
+}
+
+static const char *set_psdav_enable(cmd_parms *cmd, void *mconfig, int flag)
+{
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+
+  if (err != NULL)
+    return err;
+
+  conf->psdav_enable = flag;
+
+  return NULL;
+}
+
+static const char *set_dav_detect(cmd_parms *cmd, void *mconfig, int flag)
+{
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+
+  if (err != NULL)
+    return err;
+
+  conf->dav_detect = flag;
 
   return NULL;
 }
@@ -465,6 +527,15 @@ static int process_security_handler(request_rec *r)
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
   process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
 
+  //k0u5uk3's debug statement
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "PSDavEnable : %d", conf->psdav_enable);
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "DAV_DETECT : %d", conf->dav_detect);
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "PSDavUidGid : %d:%d", conf->dav_uid, conf->dav_gid);
+
+  if (conf->psdav_enable && conf->dav_detect){
+      return DECLINED;
+  }
+
   // check a target file for process_security
   if (thread_on)
     return DECLINED;
@@ -539,6 +610,164 @@ static int process_security_handler(request_rec *r)
   return thread_status;
 }
 
+static int process_security_webdav_set_cap(request_rec *r)
+{
+
+  int ncap;
+  cap_t cap;
+  cap_value_t capval[3];
+  gid_t gid;
+  uid_t uid;
+
+  ncap = 2;
+
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+
+  gid = conf->dav_gid;
+  uid = conf->dav_uid;
+
+  if (!conf->root_enable && (uid == 0 || gid == 0)) {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: permission of %s is root, can't run the file",
+                 MODULE_NAME, __func__, r->filename);
+    return -1;
+  }
+
+  if (uid < conf->min_uid || gid < conf->min_gid) {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: uidgid(uid=%d gid=%d) of %s is less than "
+                                                    "min_uidgid(min_uid=%d min_gid=%d), can't run the file",
+                 MODULE_NAME, __func__, uid, gid, r->filename, conf->min_uid, conf->min_gid);
+    return -1;
+  }
+
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_webdav_set_cap start");
+
+  cap = cap_init();
+  capval[0] = CAP_SETUID;
+  capval[1] = CAP_SETGID;
+  cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_SET);
+
+  if (cap_set_proc(cap) != 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed", MODULE_NAME, __func__);
+    cap_free(cap);
+    return -1;
+  }
+
+  cap_free(cap);
+  coredump = prctl(PR_GET_DUMPABLE);
+
+  cap = cap_get_proc();
+  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
+
+  if (cap_set_proc(cap) != 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed before setuid", MODULE_NAME,
+                 __func__);
+    cap_free(cap);
+    return -1;
+  }
+
+  cap_free(cap);
+
+  int ret;
+  setgroups(0, NULL);
+  ret = setgid(gid);
+  if (ret < 0)
+    return ret;
+  ret = setuid(uid);
+  if (ret < 0)
+    return ret;
+
+  cap = cap_get_proc();
+  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_CLEAR);
+  cap_set_flag(cap, CAP_PERMITTED, ncap, capval, CAP_CLEAR);
+  if (cap_set_proc(cap) != 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed after setuid", MODULE_NAME, __func__);
+    cap_free(cap);
+    return -1;
+  }
+  cap_free(cap);
+
+  if (coredump)
+    prctl(PR_SET_DUMPABLE, 1);
+
+  return OK;
+}
+
+static void *APR_THREAD_FUNC process_security_webdav_thread_handler(apr_thread_t *thread, void *data)
+{
+  request_rec *r = (request_rec *)data;
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+  int result;
+
+  thread_webdav_on = 1;
+
+  if (process_security_webdav_set_cap(r) < 0)
+    apr_thread_exit(thread, HTTP_INTERNAL_SERVER_ERROR);
+ 
+  return NULL;
+}
+
+static int process_security_webdav_handler(request_rec *r)
+{
+  const char *extension, *handler;
+  apr_threadattr_t *thread_attr;
+  apr_thread_t *thread;
+  apr_status_t status, thread_status;
+  const char *key = "process_security_webdav_thread";
+
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+  process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
+
+  // check webdav mode
+  if (conf->psdav_enable == 0 || conf->dav_detect == 0){
+      return DECLINED;
+  }
+
+  if (thread_webdav_on)
+    return DECLINED;
+
+  apr_threadattr_create(&thread_attr, r->pool);
+  apr_threadattr_detach_set(thread_attr, 0);
+
+  status = apr_thread_create(&thread, thread_attr, process_security_webdav_thread_handler, r, r->pool);
+
+  if (status != APR_SUCCESS) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to create a thread", MODULE_NAME, __func__);
+    return HTTP_INTERNAL_SERVER_ERROR;
+  }
+
+  status = apr_thread_join(&thread_status, thread);
+
+  if (status != APR_SUCCESS) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to join a thread", MODULE_NAME, __func__);
+    r->connection->aborted = 1;
+    return HTTP_INTERNAL_SERVER_ERROR;
+  }
+
+  apr_pool_userdata_set((void *)thread, key, NULL, r->pool);
+
+  return thread_status;
+}
+
+static int process_security_webdav_finish(request_rec *r)
+{
+  void *data;
+  apr_thread_t *thread;
+  const char *key = "process_security_webdav_thread";
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+
+  if (conf->psdav_enable == 0 || conf->dav_detect == 0){
+      return DECLINED;
+  }
+
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_webdav_finish start");
+
+  apr_pool_userdata_get((void *)&data, key, r->pool);
+  thread = (apr_thread_t *)data;
+  apr_thread_exit(thread, APR_SUCCESS);
+
+  return OK; 
+}
+
 static const command_rec process_security_cmds[] = {
 
     AP_INIT_FLAG("PSExAll", set_all_ext, NULL, ACCESS_CONF | RSRC_CONF,
@@ -554,8 +783,13 @@ static const command_rec process_security_cmds[] = {
     AP_INIT_FLAG("PSCheckSuexecids", set_check_suexec_ids, NULL, ACCESS_CONF | RSRC_CONF,
                  "Set Enable Owner Check via suExecUserGgroup "
                  " On / Off. (default Off)"),
+    AP_INIT_FLAG("PSDavEnable", set_psdav_enable, NULL, ACCESS_CONF | RSRC_CONF,
+                 "Set Enable working of considering webdav  On / Off. (default Off)"),
+    AP_INIT_FLAG("DAV", set_dav_detect, NULL, ACCESS_CONF | RSRC_CONF,
+                 "detection of DAV option of mod_dav. (user don't touch this option)"),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
+    AP_INIT_TAKE2("PSDavUidGid", set_davuidgid, NULL, RSRC_CONF, "Webdav uid and gid."),
     AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
     AP_INIT_ITERATE("PSHandlers", set_handlers, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable handlers."),
     AP_INIT_ITERATE("PSIgnoreExtensions", set_ignore_extensions, NULL, ACCESS_CONF | RSRC_CONF,
@@ -567,6 +801,8 @@ static void register_hooks(apr_pool_t *p)
   ap_hook_post_config(process_security_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(process_security_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(process_security_handler, NULL, NULL, APR_HOOK_REALLY_FIRST);
+  ap_hook_create_request(process_security_webdav_handler, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_log_transaction(process_security_webdav_finish, NULL, NULL, APR_HOOK_REALLY_FIRST);
 }
 
 #ifdef __APACHE24__
@@ -581,3 +817,5 @@ module AP_MODULE_DECLARE_DATA process_security_module = {
     process_security_cmds,                         /* command apr_table_t */
     register_hooks                                 /* register hooks */
 };
+
+
