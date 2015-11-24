@@ -358,7 +358,7 @@ static const char *set_ignore_extensions(cmd_parms *cmd, void *mconfig, const ch
 }
 
 static int process_security_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
-  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_init start");
+{
   void *data;
   const char *userdata_key = "process_security_init";
 
