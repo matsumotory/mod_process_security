@@ -359,6 +359,7 @@ static const char *set_ignore_extensions(cmd_parms *cmd, void *mconfig, const ch
 
 static int process_security_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
 {
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_init start");
   void *data;
   const char *userdata_key = "process_security_init";
 
@@ -376,6 +377,7 @@ static int process_security_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *pt
 
 static void process_security_child_init(apr_pool_t *p, server_rec *server)
 {
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_child_init start");
   int ncap;
   cap_t cap;
   cap_value_t capval[3];
@@ -403,7 +405,7 @@ static void process_security_child_init(apr_pool_t *p, server_rec *server)
 
 static int process_security_set_cap(request_rec *r)
 {
-
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_set_cap start");
   int ncap;
   cap_t cap;
   cap_value_t capval[3];
@@ -483,6 +485,7 @@ static int process_security_set_cap(request_rec *r)
 
 static void *APR_THREAD_FUNC process_security_thread_handler(apr_thread_t *thread, void *data)
 {
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_thread_handler start");
   request_rec *r = (request_rec *)data;
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
   int result;
@@ -515,6 +518,7 @@ static void *APR_THREAD_FUNC process_security_thread_handler(apr_thread_t *threa
 
 static int process_security_handler(request_rec *r)
 {
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "process_security_handler start");
   int i;
   const char *extension, *handler;
   apr_threadattr_t *thread_attr;
