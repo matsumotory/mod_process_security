@@ -84,6 +84,8 @@ typedef struct {
   gid_t min_gid;
   u_int psdav_enable;
   u_int dav_detect;
+  uid_t dav_uid;
+  gid_t dav_gid;
   apr_array_header_t *extensions;
   apr_array_header_t *handlers;
   apr_array_header_t *ignore_extensions;
@@ -125,6 +127,8 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->keep_open_enable = OFF;
   conf->psdav_enable = OFF;
   conf->dav_detect = OFF;
+  conf->dav_uid = PS_DEFAULT_UID;
+  conf->dav_gid = PS_DEFAULT_GID;
   conf->extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->handlers = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->ignore_extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
@@ -182,6 +186,33 @@ static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
 
   conf->default_uid = (uid_t)check_uid;
   conf->default_gid = (gid_t)check_gid;
+
+  return NULL;
+}
+
+static const char *set_davuidgid(cmd_parms *cmd, void *mconfig, const char *uid, const char *gid)
+{
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
+
+  if (err != NULL)
+    return err;
+
+  unsigned long check_uid = (unsigned long)apr_atoi64(uid);
+
+  if (check_uid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defuid of illegal value", MODULE_NAME, __func__);
+    return "davuid of illegal value";
+  }
+
+  unsigned long check_gid = (unsigned long)apr_atoi64(gid);
+  if (check_gid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defgid of illegal value", MODULE_NAME, __func__);
+    return "davgid of illegal value";
+  }
+
+  conf->dav_uid = (uid_t)check_uid;
+  conf->dav_gid = (gid_t)check_gid;
 
   return NULL;
 }
@@ -498,6 +529,7 @@ static int process_security_handler(request_rec *r)
 
   ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "PSDavEnable : %d", conf->psdav_enable);
   ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "DAV_DETECT : %d", conf->dav_detect);
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "PSDavUidGid : %d:%d", conf->dav_uid, conf->dav_gid);
 
   // check a target file for process_security
   if (thread_on)
@@ -594,6 +626,7 @@ static const command_rec process_security_cmds[] = {
                  "detection of DAV option of mod_dav. (user don't touch this option)"),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
+    AP_INIT_TAKE2("PSDavUidGid", set_davuidgid, NULL, RSRC_CONF, "Webdav uid and gid."),
     AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
     AP_INIT_ITERATE("PSHandlers", set_handlers, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable handlers."),
     AP_INIT_ITERATE("PSIgnoreExtensions", set_ignore_extensions, NULL, ACCESS_CONF | RSRC_CONF,
