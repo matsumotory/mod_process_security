@@ -46,6 +46,7 @@
 #include <sys/prctl.h>
 #include <sys/capability.h>
 #include <limits.h>
+#include "mod_dav.h"
 
 #define MODULE_NAME "mod_process_security"
 #define MODULE_VERSION "1.1.4"
@@ -83,7 +84,6 @@ typedef struct {
   uid_t min_uid;
   gid_t min_gid;
   u_int psdav_enable;
-  u_int dav_detect;
   uid_t dav_uid;
   gid_t dav_gid;
   apr_array_header_t *extensions;
@@ -108,6 +108,15 @@ static void *ps_create_dir_config(apr_pool_t *p, char *d)
 }
 
 module AP_MODULE_DECLARE_DATA process_security_module;
+module DAV_DECLARE_DATA dav_module;
+
+typedef struct {
+    const char *provider_name;
+    const dav_provider *provider;
+    const char *dir;
+    int locktimeout;
+    int allow_depthinfinity;
+} dav_dir_conf;
 
 static int coredump;
 static int __thread volatile thread_on = 0;
@@ -126,7 +135,6 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->cap_dac_override_enable = OFF;
   conf->keep_open_enable = OFF;
   conf->psdav_enable = OFF;
-  conf->dav_detect = OFF;
   conf->dav_uid = PS_DEFAULT_UID;
   conf->dav_gid = PS_DEFAULT_GID;
   conf->extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
@@ -305,19 +313,6 @@ static const char *set_psdav_enable(cmd_parms *cmd, void *mconfig, int flag)
   return NULL;
 }
 
-static const char *set_dav_detect(cmd_parms *cmd, void *mconfig, int flag)
-{
-  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
-  const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
-
-  if (err != NULL)
-    return err;
-
-  conf->dav_detect = flag;
-
-  return NULL;
-}
-
 static const char *set_extensions(cmd_parms *cmd, void *mconfig, const char *arg)
 {
   process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
@@ -355,6 +350,14 @@ static const char *set_ignore_extensions(cmd_parms *cmd, void *mconfig, const ch
   *(const char **)apr_array_push(conf->ignore_extensions) = arg;
 
   return NULL;
+}
+
+static const dav_provider *dav_get_provider(request_rec *r)
+{
+    dav_dir_conf *conf;
+
+    conf = ap_get_module_config(r->per_dir_config, &dav_module);
+    return conf->provider;
 }
 
 static int process_security_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
@@ -413,7 +416,7 @@ static int process_security_set_cap(request_rec *r)
 
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
-  if(conf->psdav_enable && conf->dav_detect){
+  if(conf->psdav_enable && dav_get_provider(r)){
      gid = conf->dav_gid;
      uid = conf->dav_uid;
   }else{
@@ -535,7 +538,7 @@ static int process_security_handler(request_rec *r)
   if (thread_on)
     return DECLINED;
 
-  if (r->finfo.filetype == APR_NOFILE && !(conf->psdav_enable && conf->dav_detect))
+  if (r->finfo.filetype == APR_NOFILE && !(conf->psdav_enable && dav_get_provider(r)))
     return DECLINED;
 
   if (conf->all_ext_enable) {
@@ -622,8 +625,6 @@ static const command_rec process_security_cmds[] = {
                  " On / Off. (default Off)"),
     AP_INIT_FLAG("PSDavEnable", set_psdav_enable, NULL, ACCESS_CONF | RSRC_CONF,
                  "Set Enable working of considering webdav  On / Off. (default Off)"),
-    AP_INIT_FLAG("DAV", set_dav_detect, NULL, ACCESS_CONF | RSRC_CONF,
-                 "detection of DAV option of mod_dav. (user don't touch this option)"),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
     AP_INIT_TAKE2("PSDavUidGid", set_davuidgid, NULL, RSRC_CONF, "Webdav uid and gid."),
