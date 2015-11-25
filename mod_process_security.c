@@ -538,6 +538,11 @@ static int process_security_handler(request_rec *r)
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
   process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
 
+  if(conf->psdav_enable && dconf->check_suexec_ids){
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "PSDavEnable and PSCheckSuexecids can not be used simultaneously");
+    return HTTP_INTERNAL_SERVER_ERROR;
+  }
+
   // check a target file for process_security
   if (thread_on)
     return DECLINED;
