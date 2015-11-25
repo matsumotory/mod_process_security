@@ -416,7 +416,7 @@ static int process_security_set_cap(request_rec *r)
 
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
-  if(conf->psdav_enable && dav_get_provider(r)){
+  if(conf->psdav_enable == ON && dav_get_provider(r) != NULL){
      if(conf->dav_gid < 0 || conf->dav_uid < 0){
          ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "The webdav mode requires psdavuidgid parameters.");
          return -1;
@@ -538,16 +538,11 @@ static int process_security_handler(request_rec *r)
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
   process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
 
-  if(conf->psdav_enable && dconf->check_suexec_ids){
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "PSDavEnable and PSCheckSuexecids can not be used simultaneously");
-    return HTTP_INTERNAL_SERVER_ERROR;
-  }
-
   // check a target file for process_security
   if (thread_on)
     return DECLINED;
 
-  if (r->finfo.filetype == APR_NOFILE && !(conf->psdav_enable && dav_get_provider(r)))
+  if (r->finfo.filetype == APR_NOFILE && (conf->psdav_enable == OFF || dav_get_provider(r) == NULL))
     return DECLINED;
 
   if (conf->all_ext_enable) {
@@ -580,7 +575,7 @@ static int process_security_handler(request_rec *r)
     return DECLINED;
 
   // suexec ids check
-  if (dconf->check_suexec_ids == ON) {
+  if (dconf->check_suexec_ids == ON && conf->psdav_enable == OFF) {
     ap_unix_identity_t *ugid = ap_run_get_suexec_identity(r);
     if (ugid == NULL) {
       ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
