@@ -46,6 +46,7 @@
 #include <sys/prctl.h>
 #include <sys/capability.h>
 #include <limits.h>
+#include "mod_dav.h"
 
 #define MODULE_NAME "mod_process_security"
 #define MODULE_VERSION "1.1.4"
@@ -82,6 +83,9 @@ typedef struct {
   gid_t default_gid;
   uid_t min_uid;
   gid_t min_gid;
+  u_int psdav_enable;
+  uid_t dav_uid;
+  gid_t dav_gid;
   apr_array_header_t *extensions;
   apr_array_header_t *handlers;
   apr_array_header_t *ignore_extensions;
@@ -104,6 +108,15 @@ static void *ps_create_dir_config(apr_pool_t *p, char *d)
 }
 
 module AP_MODULE_DECLARE_DATA process_security_module;
+module DAV_DECLARE_DATA dav_module;
+
+typedef struct {
+    const char *provider_name;
+    const dav_provider *provider;
+    const char *dir;
+    int locktimeout;
+    int allow_depthinfinity;
+} dav_dir_conf;
 
 static int coredump;
 static int __thread volatile thread_on = 0;
@@ -121,6 +134,9 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->root_enable = OFF;
   conf->cap_dac_override_enable = OFF;
   conf->keep_open_enable = OFF;
+  conf->psdav_enable = OFF;
+  conf->dav_uid = -1;
+  conf->dav_gid = -1;
   conf->extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->handlers = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->ignore_extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
@@ -178,6 +194,33 @@ static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
 
   conf->default_uid = (uid_t)check_uid;
   conf->default_gid = (gid_t)check_gid;
+
+  return NULL;
+}
+
+static const char *set_davuidgid(cmd_parms *cmd, void *mconfig, const char *uid, const char *gid)
+{
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
+
+  if (err != NULL)
+    return err;
+
+  unsigned long check_uid = (unsigned long)apr_atoi64(uid);
+
+  if (check_uid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defuid of illegal value", MODULE_NAME, __func__);
+    return "davuid of illegal value";
+  }
+
+  unsigned long check_gid = (unsigned long)apr_atoi64(gid);
+  if (check_gid > UINT_MAX) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defgid of illegal value", MODULE_NAME, __func__);
+    return "davgid of illegal value";
+  }
+
+  conf->dav_uid = (uid_t)check_uid;
+  conf->dav_gid = (gid_t)check_gid;
 
   return NULL;
 }
@@ -256,6 +299,20 @@ static const char *set_check_suexec_ids(cmd_parms *cmd, void *mconfig, int flag)
   return NULL;
 }
 
+
+static const char *set_psdav_enable(cmd_parms *cmd, void *mconfig, int flag)
+{
+  process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+  const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+
+  if (err != NULL)
+    return err;
+
+  conf->psdav_enable = flag;
+
+  return NULL;
+}
+
 static const char *set_extensions(cmd_parms *cmd, void *mconfig, const char *arg)
 {
   process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
@@ -293,6 +350,14 @@ static const char *set_ignore_extensions(cmd_parms *cmd, void *mconfig, const ch
   *(const char **)apr_array_push(conf->ignore_extensions) = arg;
 
   return NULL;
+}
+
+static const dav_provider *dav_get_provider(request_rec *r)
+{
+    dav_dir_conf *conf;
+
+    conf = ap_get_module_config(r->per_dir_config, &dav_module);
+    return conf->provider;
 }
 
 static int process_security_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
@@ -341,7 +406,6 @@ static void process_security_child_init(apr_pool_t *p, server_rec *server)
 
 static int process_security_set_cap(request_rec *r)
 {
-
   int ncap;
   cap_t cap;
   cap_value_t capval[3];
@@ -352,8 +416,17 @@ static int process_security_set_cap(request_rec *r)
 
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
-  gid = r->finfo.group;
-  uid = r->finfo.user;
+  if(conf->psdav_enable == ON && dav_get_provider(r) != NULL){
+     if(conf->dav_gid < 0 || conf->dav_uid < 0){
+         ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "The webdav mode requires psdavuidgid parameters.");
+         return -1;
+     }
+     gid = conf->dav_gid;
+     uid = conf->dav_uid;
+  }else{
+     gid = r->finfo.group;
+     uid = r->finfo.user;
+  }
 
   if (!conf->root_enable && (uid == 0 || gid == 0)) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: permission of %s is root, can't run the file",
@@ -465,57 +538,60 @@ static int process_security_handler(request_rec *r)
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
   process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
 
-  // check a target file for process_security
   if (thread_on)
     return DECLINED;
 
-  if (r->finfo.filetype == APR_NOFILE)
-    return DECLINED;
+  // check a target file for process_security on standard mode
 
-  if (conf->all_ext_enable) {
-    enable = ON;
-    for (i = 0; i < conf->ignore_extensions->nelts; i++) {
-      extension = ((char **)conf->ignore_extensions->elts)[i];
-      name_len = strlen(r->filename) - strlen(extension);
-      if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
-        enable = OFF;
-    }
-  } else {
-    for (i = 0; i < conf->extensions->nelts; i++) {
-      extension = ((char **)conf->extensions->elts)[i];
-      name_len = strlen(r->filename) - strlen(extension);
-      if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
+  if(conf->psdav_enable == OFF || dav_get_provider(r) == NULL){
+     if (r->finfo.filetype == APR_NOFILE)
+        return DECLINED;
+
+     if (conf->all_ext_enable) {
         enable = ON;
-    }
-    // check handler
-    for (i = 0; i < conf->handlers->nelts; i++) {
-      handler = ((char **)conf->handlers->elts)[i];
-      if (strcmp(r->handler, handler) == 0)
+        for (i = 0; i < conf->ignore_extensions->nelts; i++) {
+           extension = ((char **)conf->ignore_extensions->elts)[i];
+           name_len = strlen(r->filename) - strlen(extension);
+           if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
+              enable = OFF;
+        }
+     } else {
+        for (i = 0; i < conf->extensions->nelts; i++) {
+           extension = ((char **)conf->extensions->elts)[i];
+           name_len = strlen(r->filename) - strlen(extension);
+           if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
+              enable = ON;
+        }
+        // check handler
+        for (i = 0; i < conf->handlers->nelts; i++) {
+           handler = ((char **)conf->handlers->elts)[i];
+           if (strcmp(r->handler, handler) == 0)
+              enable = ON;
+        }
+     }
+
+     if (conf->all_cgi_enable && strcmp(r->handler, "cgi-script") == 0)
         enable = ON;
-    }
-  }
 
-  if (conf->all_cgi_enable && strcmp(r->handler, "cgi-script") == 0)
-    enable = ON;
+     if (!enable)
+        return DECLINED;
 
-  if (!enable)
-    return DECLINED;
-
-  // suexec ids check
-  if (dconf->check_suexec_ids == ON) {
-    ap_unix_identity_t *ugid = ap_run_get_suexec_identity(r);
-    if (ugid == NULL) {
-      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-          "%s ERROR %s: PSCheckSuexecids failed return 500: ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
-          MODULE_NAME, __func__);
-      return HTTP_INTERNAL_SERVER_ERROR;
-    }
-    if (ugid->uid != r->finfo.user || ugid->gid != r->finfo.group) {
-      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-          "%s ERROR %s: PSCheckSuexecids return 403: opened r->filename=%s uid=%d gid=%d but suexec config uid=%d gid=%d",
-          MODULE_NAME, __func__, r->filename, r->finfo.user, r->finfo.group, ugid->uid, ugid->gid);
-      return HTTP_FORBIDDEN;
-    }
+     // suexec ids check
+     if (dconf->check_suexec_ids == ON && conf->psdav_enable == OFF) {
+        ap_unix_identity_t *ugid = ap_run_get_suexec_identity(r);
+        if (ugid == NULL) {
+           ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                 "%s ERROR %s: PSCheckSuexecids failed return 500: ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
+                 MODULE_NAME, __func__);
+           return HTTP_INTERNAL_SERVER_ERROR;
+        }
+        if (ugid->uid != r->finfo.user || ugid->gid != r->finfo.group) {
+           ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                 "%s ERROR %s: PSCheckSuexecids return 403: opened r->filename=%s uid=%d gid=%d but suexec config uid=%d gid=%d",
+                 MODULE_NAME, __func__, r->filename, r->finfo.user, r->finfo.group, ugid->uid, ugid->gid);
+           return HTTP_FORBIDDEN;
+        }
+     }
   }
 
   apr_threadattr_create(&thread_attr, r->pool);
@@ -554,8 +630,11 @@ static const command_rec process_security_cmds[] = {
     AP_INIT_FLAG("PSCheckSuexecids", set_check_suexec_ids, NULL, ACCESS_CONF | RSRC_CONF,
                  "Set Enable Owner Check via suExecUserGgroup "
                  " On / Off. (default Off)"),
+    AP_INIT_FLAG("PSDavEnable", set_psdav_enable, NULL, ACCESS_CONF | RSRC_CONF,
+                 "Set Enable working of considering webdav  On / Off. (default Off)"),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
+    AP_INIT_TAKE2("PSDavUidGid", set_davuidgid, NULL, RSRC_CONF, "Webdav uid and gid."),
     AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
     AP_INIT_ITERATE("PSHandlers", set_handlers, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable handlers."),
     AP_INIT_ITERATE("PSIgnoreExtensions", set_ignore_extensions, NULL, ACCESS_CONF | RSRC_CONF,
