@@ -135,8 +135,8 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->cap_dac_override_enable = OFF;
   conf->keep_open_enable = OFF;
   conf->psdav_enable = OFF;
-  conf->dav_uid = PS_DEFAULT_UID;
-  conf->dav_gid = PS_DEFAULT_GID;
+  conf->dav_uid = -1;
+  conf->dav_gid = -1;
   conf->extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->handlers = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->ignore_extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
@@ -417,6 +417,10 @@ static int process_security_set_cap(request_rec *r)
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
   if(conf->psdav_enable && dav_get_provider(r)){
+     if(conf->dav_gid < 0 || conf->dav_uid < 0){
+         ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "The webdav mode requires psdavuidgid parameters.");
+         return -1;
+     }
      gid = conf->dav_gid;
      uid = conf->dav_uid;
   }else{
