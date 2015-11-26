@@ -566,7 +566,7 @@ static int check_suexec_ids(request_rec *r)
             MODULE_NAME, __func__, r->filename, r->finfo.user, r->finfo.group, ugid->uid, ugid->gid);
       return HTTP_FORBIDDEN;
    }
-   return 0;
+   return APR_SUCCESS;
 }
 
 static int process_security_handler(request_rec *r)
@@ -598,7 +598,7 @@ static int process_security_handler(request_rec *r)
      // suexec ids check
      if (dconf->check_suexec_ids == ON) {
         check_suexec = check_suexec_ids(r);
-        if(check_suexec != 0){
+        if(check_suexec != APR_SUCCESS){
            return check_suexec;
         }
      }
