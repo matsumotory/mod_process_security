@@ -192,19 +192,18 @@ static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
 static const char *set_davuidgid(cmd_parms *cmd, void *mconfig, const char *uid, const char *gid)
 {
    process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+   unsigned long check_uid = (unsigned long)apr_atoi64(uid);
+   unsigned long check_gid = (unsigned long)apr_atoi64(gid);
    const char *err = ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
 
    if (err != NULL)
       return err;
-
-   unsigned long check_uid = (unsigned long)apr_atoi64(uid);
 
    if (check_uid > UINT_MAX) {
       ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defuid of illegal value", MODULE_NAME, __func__);
       return "davuid of illegal value";
    }
 
-   unsigned long check_gid = (unsigned long)apr_atoi64(gid);
    if (check_gid > UINT_MAX) {
       ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defgid of illegal value", MODULE_NAME, __func__);
       return "davgid of illegal value";
