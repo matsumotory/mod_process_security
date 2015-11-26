@@ -408,6 +408,10 @@ static int process_security_set_cap(request_rec *r)
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
   if(conf->psdav_enable && dav_get_provider(r)){
+     if(conf->dav_gid < 0 || conf->dav_uid < 0){
+         ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "The webdav mode requires psdavuidgid parameters.");
+         return -1;
+     }
      gid = conf->dav_gid;
      uid = conf->dav_uid;
   }else{
