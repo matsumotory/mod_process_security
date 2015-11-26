@@ -515,16 +515,50 @@ static void *APR_THREAD_FUNC process_security_thread_handler(apr_thread_t *threa
   return NULL;
 }
 
+static int check_process_security_enable(request_rec *r, process_security_config_t *conf)
+{
+   char *extension;
+   const char *handler;
+   int enable = 0;
+   int name_len = 0;
+   int i;
+
+   if (conf->all_ext_enable) {
+      enable = ON;
+      for (i = 0; i < conf->ignore_extensions->nelts; i++) {
+         extension = ((char **)conf->ignore_extensions->elts)[i];
+         name_len = strlen(r->filename) - strlen(extension);
+         if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
+            enable = OFF;
+      }
+   } else {
+      for (i = 0; i < conf->extensions->nelts; i++) {
+         extension = ((char **)conf->extensions->elts)[i];
+         name_len = strlen(r->filename) - strlen(extension);
+         if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
+            enable = ON;
+      }
+      // check handler
+      for (i = 0; i < conf->handlers->nelts; i++) {
+         handler = ((char **)conf->handlers->elts)[i];
+         if (strcmp(r->handler, handler) == 0)
+            enable = ON;
+      }
+   }
+
+   if (conf->all_cgi_enable && strcmp(r->handler, "cgi-script") == 0)
+      enable = ON;
+
+   return enable;
+}
+
 static int process_security_handler(request_rec *r)
 {
-  int i;
-  const char *extension, *handler;
   apr_threadattr_t *thread_attr;
   apr_thread_t *thread;
   apr_status_t status, thread_status;
 
   int enable = 0;
-  int name_len = 0;
 
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
   process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
@@ -538,31 +572,7 @@ static int process_security_handler(request_rec *r)
      if (r->finfo.filetype == APR_NOFILE)
         return DECLINED;
 
-     if (conf->all_ext_enable) {
-        enable = ON;
-        for (i = 0; i < conf->ignore_extensions->nelts; i++) {
-           extension = ((char **)conf->ignore_extensions->elts)[i];
-           name_len = strlen(r->filename) - strlen(extension);
-           if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
-              enable = OFF;
-        }
-     } else {
-        for (i = 0; i < conf->extensions->nelts; i++) {
-           extension = ((char **)conf->extensions->elts)[i];
-           name_len = strlen(r->filename) - strlen(extension);
-           if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
-              enable = ON;
-        }
-        // check handler
-        for (i = 0; i < conf->handlers->nelts; i++) {
-           handler = ((char **)conf->handlers->elts)[i];
-           if (strcmp(r->handler, handler) == 0)
-              enable = ON;
-        }
-     }
-
-     if (conf->all_cgi_enable && strcmp(r->handler, "cgi-script") == 0)
-        enable = ON;
+     enable = check_process_security_enable(r, conf);
 
      if (!enable)
         return DECLINED;
