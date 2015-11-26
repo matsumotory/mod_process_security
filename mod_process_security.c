@@ -82,6 +82,7 @@ typedef struct {
   gid_t default_gid;
   uid_t min_uid;
   gid_t min_gid;
+  u_int psdav_enable;
   apr_array_header_t *extensions;
   apr_array_header_t *handlers;
   apr_array_header_t *ignore_extensions;
@@ -121,6 +122,7 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->root_enable = OFF;
   conf->cap_dac_override_enable = OFF;
   conf->keep_open_enable = OFF;
+  conf->psdav_enable = OFF;
   conf->extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->handlers = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->ignore_extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
@@ -254,6 +256,19 @@ static const char *set_check_suexec_ids(cmd_parms *cmd, void *mconfig, int flag)
   dconf->check_suexec_ids = flag;
 
   return NULL;
+}
+
+static const char *set_psdav_enable(cmd_parms *cmd, void *mconfig, int flag)
+{
+   process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+
+   if (err != NULL)
+      return err;
+
+   conf->psdav_enable = flag;
+
+   return NULL;
 }
 
 static const char *set_extensions(cmd_parms *cmd, void *mconfig, const char *arg)
@@ -554,6 +569,8 @@ static const command_rec process_security_cmds[] = {
     AP_INIT_FLAG("PSCheckSuexecids", set_check_suexec_ids, NULL, ACCESS_CONF | RSRC_CONF,
                  "Set Enable Owner Check via suExecUserGgroup "
                  " On / Off. (default Off)"),
+    AP_INIT_FLAG("PSDavEnable", set_psdav_enable, NULL, ACCESS_CONF | RSRC_CONF,
+          "Set Enable working of considering webdav  On / Off. (default Off)"),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
     AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
