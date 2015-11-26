@@ -552,6 +552,27 @@ static int check_process_security_enable(request_rec *r, process_security_config
    return enable;
 }
 
+static int check_suexec_ids(request_rec *r, process_security_dir_config_t *dconf)
+{
+    // suexec ids check
+    if (dconf->check_suexec_ids == ON) {
+       ap_unix_identity_t *ugid = ap_run_get_suexec_identity(r);
+       if (ugid == NULL) {
+          ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                "%s ERROR %s: PSCheckSuexecids failed return 500: ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
+                MODULE_NAME, __func__);
+          return HTTP_INTERNAL_SERVER_ERROR;
+       }
+       if (ugid->uid != r->finfo.user || ugid->gid != r->finfo.group) {
+          ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                "%s ERROR %s: PSCheckSuexecids return 403: opened r->filename=%s uid=%d gid=%d but suexec config uid=%d gid=%d",
+                MODULE_NAME, __func__, r->filename, r->finfo.user, r->finfo.group, ugid->uid, ugid->gid);
+          return HTTP_FORBIDDEN;
+       }
+    }
+    return 0;
+}
+
 static int process_security_handler(request_rec *r)
 {
   apr_threadattr_t *thread_attr;
@@ -559,6 +580,7 @@ static int process_security_handler(request_rec *r)
   apr_status_t status, thread_status;
 
   int enable = 0;
+  int check_suexec = 0;
 
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
   process_security_dir_config_t *dconf = ap_get_module_config(r->per_dir_config, &process_security_module);
@@ -577,21 +599,9 @@ static int process_security_handler(request_rec *r)
      if (!enable)
         return DECLINED;
 
-     // suexec ids check
-     if (dconf->check_suexec_ids == ON) {
-        ap_unix_identity_t *ugid = ap_run_get_suexec_identity(r);
-        if (ugid == NULL) {
-           ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                 "%s ERROR %s: PSCheckSuexecids failed return 500: ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
-                 MODULE_NAME, __func__);
-           return HTTP_INTERNAL_SERVER_ERROR;
-        }
-        if (ugid->uid != r->finfo.user || ugid->gid != r->finfo.group) {
-           ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-                 "%s ERROR %s: PSCheckSuexecids return 403: opened r->filename=%s uid=%d gid=%d but suexec config uid=%d gid=%d",
-                 MODULE_NAME, __func__, r->filename, r->finfo.user, r->finfo.group, ugid->uid, ugid->gid);
-           return HTTP_FORBIDDEN;
-        }
+     check_suexec = check_suexec_ids(r, dconf);
+     if(check_suexec != 0){
+        return check_suexec;
      }
   }
 
