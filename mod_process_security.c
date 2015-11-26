@@ -46,6 +46,7 @@
 #include <sys/prctl.h>
 #include <sys/capability.h>
 #include <limits.h>
+#include "mod_process_security_dav.h"
 
 #define MODULE_NAME "mod_process_security"
 #define MODULE_VERSION "1.1.4"
@@ -300,6 +301,14 @@ static const char *set_psdav_enable(cmd_parms *cmd, void *mconfig, int flag)
    conf->psdav_enable = flag;
 
    return NULL;
+}
+
+static const dav_provider *dav_get_provider(request_rec *r)
+{
+   dav_dir_conf *conf;
+
+   conf = ap_get_module_config(r->per_dir_config, &dav_module);
+   return conf->provider;
 }
 
 static const char *set_extensions(cmd_parms *cmd, void *mconfig, const char *arg)
