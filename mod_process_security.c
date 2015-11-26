@@ -524,53 +524,56 @@ static int process_security_handler(request_rec *r)
   if (thread_on)
     return DECLINED;
 
-  if (r->finfo.filetype == APR_NOFILE)
-    return DECLINED;
+  // check process for standard mode
+  if(conf->psdav_enable == OFF || dav_get_provider(r) == NULL){
+     if (r->finfo.filetype == APR_NOFILE)
+        return DECLINED;
 
-  if (conf->all_ext_enable) {
-    enable = ON;
-    for (i = 0; i < conf->ignore_extensions->nelts; i++) {
-      extension = ((char **)conf->ignore_extensions->elts)[i];
-      name_len = strlen(r->filename) - strlen(extension);
-      if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
-        enable = OFF;
-    }
-  } else {
-    for (i = 0; i < conf->extensions->nelts; i++) {
-      extension = ((char **)conf->extensions->elts)[i];
-      name_len = strlen(r->filename) - strlen(extension);
-      if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
+     if (conf->all_ext_enable) {
         enable = ON;
-    }
-    // check handler
-    for (i = 0; i < conf->handlers->nelts; i++) {
-      handler = ((char **)conf->handlers->elts)[i];
-      if (strcmp(r->handler, handler) == 0)
+        for (i = 0; i < conf->ignore_extensions->nelts; i++) {
+           extension = ((char **)conf->ignore_extensions->elts)[i];
+           name_len = strlen(r->filename) - strlen(extension);
+           if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
+              enable = OFF;
+        }
+     } else {
+        for (i = 0; i < conf->extensions->nelts; i++) {
+           extension = ((char **)conf->extensions->elts)[i];
+           name_len = strlen(r->filename) - strlen(extension);
+           if (name_len >= 0 && strcmp(&r->filename[name_len], extension) == 0)
+              enable = ON;
+        }
+        // check handler
+        for (i = 0; i < conf->handlers->nelts; i++) {
+           handler = ((char **)conf->handlers->elts)[i];
+           if (strcmp(r->handler, handler) == 0)
+              enable = ON;
+        }
+     }
+
+     if (conf->all_cgi_enable && strcmp(r->handler, "cgi-script") == 0)
         enable = ON;
-    }
-  }
 
-  if (conf->all_cgi_enable && strcmp(r->handler, "cgi-script") == 0)
-    enable = ON;
+     if (!enable)
+        return DECLINED;
 
-  if (!enable)
-    return DECLINED;
-
-  // suexec ids check
-  if (dconf->check_suexec_ids == ON) {
-    ap_unix_identity_t *ugid = ap_run_get_suexec_identity(r);
-    if (ugid == NULL) {
-      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-          "%s ERROR %s: PSCheckSuexecids failed return 500: ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
-          MODULE_NAME, __func__);
-      return HTTP_INTERNAL_SERVER_ERROR;
-    }
-    if (ugid->uid != r->finfo.user || ugid->gid != r->finfo.group) {
-      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
-          "%s ERROR %s: PSCheckSuexecids return 403: opened r->filename=%s uid=%d gid=%d but suexec config uid=%d gid=%d",
-          MODULE_NAME, __func__, r->filename, r->finfo.user, r->finfo.group, ugid->uid, ugid->gid);
-      return HTTP_FORBIDDEN;
-    }
+     // suexec ids check
+     if (dconf->check_suexec_ids == ON) {
+        ap_unix_identity_t *ugid = ap_run_get_suexec_identity(r);
+        if (ugid == NULL) {
+           ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                 "%s ERROR %s: PSCheckSuexecids failed return 500: ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
+                 MODULE_NAME, __func__);
+           return HTTP_INTERNAL_SERVER_ERROR;
+        }
+        if (ugid->uid != r->finfo.user || ugid->gid != r->finfo.group) {
+           ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                 "%s ERROR %s: PSCheckSuexecids return 403: opened r->filename=%s uid=%d gid=%d but suexec config uid=%d gid=%d",
+                 MODULE_NAME, __func__, r->filename, r->finfo.user, r->finfo.group, ugid->uid, ugid->gid);
+           return HTTP_FORBIDDEN;
+        }
+     }
   }
 
   apr_threadattr_create(&thread_attr, r->pool);
