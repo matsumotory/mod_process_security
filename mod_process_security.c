@@ -407,8 +407,13 @@ static int process_security_set_cap(request_rec *r)
 
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
-  gid = r->finfo.group;
-  uid = r->finfo.user;
+  if(conf->psdav_enable && dav_get_provider(r)){
+     gid = conf->dav_gid;
+     uid = conf->dav_uid;
+  }else{
+     gid = r->finfo.group;
+     uid = r->finfo.user;
+  }
 
   if (!conf->root_enable && (uid == 0 || gid == 0)) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: permission of %s is root, can't run the file",
