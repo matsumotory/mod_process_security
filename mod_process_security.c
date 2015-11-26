@@ -83,6 +83,8 @@ typedef struct {
   uid_t min_uid;
   gid_t min_gid;
   u_int psdav_enable;
+  uid_t dav_uid;
+  gid_t dav_gid;
   apr_array_header_t *extensions;
   apr_array_header_t *handlers;
   apr_array_header_t *ignore_extensions;
@@ -123,6 +125,8 @@ static void *create_config(apr_pool_t *p, server_rec *s)
   conf->cap_dac_override_enable = OFF;
   conf->keep_open_enable = OFF;
   conf->psdav_enable = OFF;
+  conf->dav_uid = -1;
+  conf->dav_gid = -1;
   conf->extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->handlers = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
   conf->ignore_extensions = apr_array_make(p, PS_MAXEXTENSIONS, sizeof(char *));
@@ -182,6 +186,33 @@ static const char *set_defuidgid(cmd_parms *cmd, void *mconfig, const char *uid,
   conf->default_gid = (gid_t)check_gid;
 
   return NULL;
+}
+
+static const char *set_davuidgid(cmd_parms *cmd, void *mconfig, const char *uid, const char *gid)
+{
+   process_security_config_t *conf = ap_get_module_config(cmd->server->module_config, &process_security_module);
+   const char *err = ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
+
+   if (err != NULL)
+      return err;
+
+   unsigned long check_uid = (unsigned long)apr_atoi64(uid);
+
+   if (check_uid > UINT_MAX) {
+      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defuid of illegal value", MODULE_NAME, __func__);
+      return "davuid of illegal value";
+   }
+
+   unsigned long check_gid = (unsigned long)apr_atoi64(gid);
+   if (check_gid > UINT_MAX) {
+      ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:defgid of illegal value", MODULE_NAME, __func__);
+      return "davgid of illegal value";
+   }
+
+   conf->dav_uid = (uid_t)check_uid;
+   conf->dav_gid = (gid_t)check_gid;
+
+   return NULL;
 }
 
 static const char *set_all_ext(cmd_parms *cmd, void *mconfig, int flag)
@@ -573,6 +604,7 @@ static const command_rec process_security_cmds[] = {
           "Set Enable working of considering webdav  On / Off. (default Off)"),
     AP_INIT_TAKE2("PSMinUidGid", set_minuidgid, NULL, RSRC_CONF, "Minimal uid and gid."),
     AP_INIT_TAKE2("PSDefaultUidGid", set_defuidgid, NULL, RSRC_CONF, "Default uid and gid."),
+    AP_INIT_TAKE2("PSDavUidGid", set_davuidgid, NULL, RSRC_CONF, "Webdav uid and gid."),
     AP_INIT_ITERATE("PSExtensions", set_extensions, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable Extensions."),
     AP_INIT_ITERATE("PSHandlers", set_handlers, NULL, ACCESS_CONF | RSRC_CONF, "Set Enable handlers."),
     AP_INIT_ITERATE("PSIgnoreExtensions", set_ignore_extensions, NULL, ACCESS_CONF | RSRC_CONF,
