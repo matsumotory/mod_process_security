@@ -1,3 +1,6 @@
+/*  This header file is necessary in order to mod_process_security 
+    get the directive structure of mod_dav.                         */
+
 #include "mod_dav.h"
 
 module DAV_DECLARE_DATA dav_module;
@@ -9,5 +12,4 @@ typedef struct {
    int locktimeout;
    int allow_depthinfinity;
 } dav_dir_conf;
-
 
