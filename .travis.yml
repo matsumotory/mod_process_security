@@ -68,3 +68,13 @@ script:
 
   # debug
   - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_logfiledir)/error_log
+
+  # build mruby
+  - cd test && git clone --depth=1 git://github.com/mruby/mruby.git
+  - cd mruby && MRUBY_CONFIG=../build_config.rb rake
+
+  # run test.rb
+  - cd ../
+  - ./mruby/bin/mruby ./test.rb
+
+
