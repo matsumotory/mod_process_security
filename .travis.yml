@@ -127,7 +127,7 @@ script:
   - curl http://mps-normal.test:8080/userinfo.cgi
   - curl http://mps-normal.test:8080/userinfo.cgi -o /tmp/userinfo.txt
   - cat /tmp/userinfo.txt
-  - "if [ $(cat /tmp/userinfo.txt) = \"1003:1003\" ];then true;else false;fi"
+  - "if [ $(cat /tmp/userinfo.txt) = \"1003:1003:1003:1003\" ];then true;else false;fi"
 
   # WRITE file to webdav 
   - echo 'mps-webdav-test' | tee -a test.txt
