@@ -119,7 +119,7 @@ script:
 
   # upload uid,gid check script from webdav
   - curl --upload ./test/userinfo.cgi http://mps-webdav.test:8080
-  - "if [ $(stat -f '%u:%g' /usr/local/apache2/webdav/userinfo.cgi) = \"1004:1004\" ];then true;else false;fi"
+  - "if [ $(sudo stat -c '%u:%g' /usr/local/apache2/webdav/userinfo.cgi) = \"1004:1004\" ];then true;else false;fi"
 
   # add execute permisson
   - sudo chmod u+x /usr/local/apache2/webdav/userinfo.cgi
@@ -150,7 +150,7 @@ script:
   # MKCOL test
   - curl -X MKCOL http://mps-webdav.test:8080/MKCOL/
   - "if [ -d /usr/local/apache2/webdav/MKCOL/ ]; then true; else false;fi"
-  - "if [ $(stat -f '%u:%g' /usr/local/apache2/webdav/MKCOL/) = \"1004:1004\" ];then true;else false;fi"
+  - "if [ $(sudo stat -c '%u:%g' /usr/local/apache2/webdav/MKCOL/) = \"1004:1004\" ];then true;else false;fi"
 
   # DELETE directory in the webdav
   - curl -X DELETE http://mps-webdav.test:8080/MKCOL/
@@ -164,7 +164,7 @@ script:
   
   # .dav owner and group test
   - ls -al /usr/local/apach2/webdav/
-  - "if [ $(stat -f '%u:%g' /usr/local/apache2/webdav/.dav.dir) = \"1004:1004\" ];then true;else false;fi"
+  - "if [ $(sudo stat -c '%u:%g' /usr/local/apache2/webdav/.dav.dir) = \"1004:1004\" ];then true;else false;fi"
 
   # Check LOCKED 
   - "echo 'abcdefg' > test.txt"
