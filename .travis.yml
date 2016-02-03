@@ -163,7 +163,7 @@ script:
   - "if [ $(cat /tmp/LOCK | grep 'Lock-Token' -c ) = 1 ]; then true; else false;fi"
   
   # .dav owner and group test
-  - sudo ls -al /usr/local/apach2/webdav/
+  - sudo ls -al /usr/local/apache2/webdav/
   - "if [ $(sudo stat -c '%u:%g' /usr/local/apache2/webdav/.dav.dir) = \"1004:1004\" ];then true;else false;fi"
 
   # Check LOCKED 
