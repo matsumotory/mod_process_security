@@ -163,7 +163,7 @@ script:
   - "if [ $(cat /tmp/LOCK | grep 'Lock-Token' -c ) = 1 ]; then true; else false;fi"
   
   # .dav owner and group test
-  - "if [ $(stat -f '%u:%g' /usr/local/apache2/webdav/.dav.dir/) = \"1004:1004\" ];then true;else false;fi"
+  - "if [ $(stat -f '%u:%g' /usr/local/apache2/webdav/.dav.dir) = \"1004:1004\" ];then true;else false;fi"
 
   # Check LOCKED 
   - "echo 'abcdefg' > test.txt"
