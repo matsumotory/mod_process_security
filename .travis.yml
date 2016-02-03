@@ -4,7 +4,7 @@ compiler:
 before_install:
   - sudo apt-get -qq update
 install:
-  - sudo apt-get -qq install rake bison libcurl4-openssl-dev libhiredis-dev libmarkdown2-dev libapr1-dev libaprutil1-dev apache2 libcap-dev
+  - sudo apt-get -qq install rake bison libcurl4-openssl-dev libhiredis-dev libmarkdown2-dev libapr1-dev libaprutil1-dev apache2 libcap-dev curl
 env:
   - HTTPD_VERSION=httpd-2.2.31
     HTTPD_CONFIG_OPT="--with-mpm=prefork --enable-module=all --enable-mods-shared=all"
@@ -15,7 +15,9 @@ env:
     APR_UTIL_TAR=${APR_UTIL}.tar.gz 
     APXS_CHECK_CMD="../${HTTPD_VERSION}/apache/bin/apachectl -v"
     VHOST_CONF="test/mod_process_security.conf.2.2"
-  - HTTPD_VERSION=httpd-2.4.17 
+    VHOST_DAV_CONF="test/mod_process_security.dav.conf.2.2"
+    DEFAULT_DIR="/home/travis/build/matsumoto-r/mod_process_security/"
+  - HTTPD_VERSION=httpd-2.4.18 
     HTTPD_CONFIG_OPT="--with-mpm=prefork"
     APR=apr-1.5.2 
     APR_UTIL=apr-util-1.5.4 
@@ -24,6 +26,9 @@ env:
     APR_UTIL_TAR=${APR_UTIL}.tar.gz 
     APXS_CHECK_CMD="../${HTTPD_VERSION}/apache/bin/apachectl -v"
     VHOST_CONF="test/mod_process_security.conf.2.4"
+    VHOST_DAV_CONF="test/mod_process_security.dav.conf.2.4"
+    DEFAULT_DIR="/home/travis/build/matsumoto-r/mod_process_security/"
+  #- HTTPD_VERSION=httpd-2.4.17 
 before_script:
   - cd ../
   - wget http://ftp.jaist.ac.jp/pub/apache//httpd/${HTTPD_TAR}
@@ -52,6 +57,9 @@ before_script:
   - sudo chmod 700 test/id2.cgi
   - sudo cp -p test/id2.cgi $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/.
 
+  # backup default server config
+  - sudo cp $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf /tmp/
+
   # setup server config
   - sudo sed -i "s/^Listen/#Listen/" $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
   - sudo cat ${VHOST_CONF} >> $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
@@ -59,6 +67,7 @@ before_script:
   - sudo make APXS=../${HTTPD_VERSION}/apache/bin/apxs APACHECTL=../${HTTPD_VERSION}/apache/bin/apachectl restart
 script:
   # debug
+  - pwd
   - sudo ls -la $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/
   - sudo netstat -lnpt
   - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
@@ -68,3 +77,116 @@ script:
 
   # debug
   - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_logfiledir)/error_log
+
+  # build mruby
+  - cd test && git clone --depth=1 git://github.com/mruby/mruby.git
+  - cd mruby && MRUBY_CONFIG=../build_config.rb rake
+
+  #--------------------#
+  # General Test Suite #
+  #--------------------#
+
+  # run test.rb
+  - cd ${DEFAULT_DIR}/test 
+  - ./mruby/bin/mruby ./test.rb
+
+  #-------------------#
+  # Webdav Test Suite #
+  #-------------------#
+  - cd ${DEFAULT_DIR}/
+  
+  # restore default config
+  - cp /tmp/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+
+  # create webdav user
+  - sudo useradd webdav
+  - id webdav
+  
+  # cearete webdav directory
+  - sudo mkdir -p /usr/local/apache2/webdav/
+  - sudo chown -R webdav:webdav /usr/local/apache2/webdav/
+
+  # setup webdav config
+  - sudo sed -i "s/^Listen/#Listen/" $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+  - sudo cat ${VHOST_DAV_CONF} >> $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+  - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q sysconfdir)/$(../${HTTPD_VERSION}/apache/bin/apxs -q progname).conf
+  - sudo make APXS=../${HTTPD_VERSION}/apache/bin/apxs APACHECTL=../${HTTPD_VERSION}/apache/bin/apachectl restart
+  - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_logfiledir)/error_log
+  - echo '127.0.0.1 mps-normal.test' | sudo tee -a /etc/hosts
+  - echo '127.0.0.1 mps-webdav.test' | sudo tee -a /etc/hosts
+  - cat /etc/hosts
+  - sudo netstat -lnpt
+
+  # upload uid,gid check script from webdav
+  - curl --upload ./test/userinfo.cgi http://mps-webdav.test:8080
+  - "if [ $(sudo stat -c '%u:%g' /usr/local/apache2/webdav/userinfo.cgi) = \"1004:1004\" ];then true;else false;fi"
+
+  # add execute permisson
+  - sudo chmod u+x /usr/local/apache2/webdav/userinfo.cgi
+
+  # check uid,gid from cgi
+  - curl http://mps-normal.test:8080/userinfo.cgi
+  - curl http://mps-normal.test:8080/userinfo.cgi -o /tmp/userinfo.txt
+  - cat /tmp/userinfo.txt
+  - "if [ $(cat /tmp/userinfo.txt) = \"1004:1004:1004:1004\" ];then true;else false;fi"
+
+  # WRITE file to webdav 
+  - echo 'mps-webdav-test' | tee -a test.txt
+  - curl --upload test.txt http://mps-webdav.test:8080  
+
+  # READ file from webdav
+  - curl http://mps-webdav.test:8080/test.txt -o /tmp/test.txt
+  - "if [ $(cat /tmp/test.txt) = \"mps-webdav-test\" ];then true;else false;fi"
+
+  # DELETE file in the webdav
+  - curl -X DELETE http://mps-webdav.test:8080/test.txt
+  - "if [ ! -f /usr/local/apache2/webdav/test.txt ]; then true; else false;fi"
+
+  # PROPFIND test
+  - curl -X PROPFIND http://mps-webdav.test:8080/userinfo.cgi -o /tmp/PROPFIND
+  - cat /tmp/PROPFIND
+  - "if [ $(file /tmp/PROPFIND | grep 'XML document text' -c ) = 1 ]; then true; else false;fi"
+
+  # MKCOL test
+  - curl -X MKCOL http://mps-webdav.test:8080/MKCOL/
+  - "if [ -d /usr/local/apache2/webdav/MKCOL/ ]; then true; else false;fi"
+  - "if [ $(sudo stat -c '%u:%g' /usr/local/apache2/webdav/MKCOL/) = \"1004:1004\" ];then true;else false;fi"
+
+  # DELETE directory in the webdav
+  - curl -X DELETE http://mps-webdav.test:8080/MKCOL/
+  - "if [ ! -d /usr/local/apache2/webdav/MKCOL/ ]; then true; else false;fi"
+
+  # LOCK test
+  - curl --upload test.txt http://mps-webdav.test:8080  
+  - curl -i -X LOCK --data @./test/lock.xml http://mps-webdav.test:8080/test.txt -o /tmp/LOCK
+  - cat /tmp/LOCK
+  - "if [ $(cat /tmp/LOCK | grep 'Lock-Token' -c ) = 1 ]; then true; else false;fi"
+  
+  # .dav owner and group test
+  - sudo ls -al /usr/local/apache2/webdav/
+  - "if [ $(sudo stat -c '%u:%g' /usr/local/apache2/webdav/.dav.dir) = \"1004:1004\" ];then true;else false;fi"
+
+  # Check LOCKED 
+  - "echo 'abcdefg' > test.txt"
+  - curl http://mps-webdav.test:8080/test.txt -o /tmp/LOCK01
+  - cat /tmp/LOCK01
+  - curl --upload test.txt http://mps-webdav.test:8080 -o /tmp/UPLOAD_ON_LOCK
+  - "if [ $(cat /tmp/UPLOAD_ON_LOCK | grep '423 Locked' -c ) = 1 ]; then true; else false;fi"
+  - curl http://mps-webdav.test:8080/test.txt -o /tmp/LOCK02
+  - cat /tmp/LOCK02
+  - "if cmp /tmp/LOCK01 /tmp/LOCK02; then true; else false;fi"
+
+  # UNLOCK test
+  - cat /tmp/LOCK |grep 'Lock-Token' | perl -nle '@a = split(":", $_, 2); chomp $a[1]; $a[1] =~ s/\s//g; print $a[1];' > /tmp/TOKEN
+  - cat /tmp/TOKEN
+  - cat /tmp/TOKEN | xargs -I {} curl -i -X UNLOCK --header 'Lock-Token:{}' http://mps-webdav.test:8080/test.txt -o /tmp/UNLOCK
+  - cat /tmp/UNLOCK
+
+  # Check UNLOCKED
+  - curl http://mps-webdav.test:8080/test.txt -o /tmp/UNLOCK01
+  - cat /tmp/UNLOCK01
+  - curl --upload test.txt http://mps-webdav.test:8080
+  - curl http://mps-webdav.test:8080/test.txt -o /tmp/UNLOCK02
+  - cat /tmp/UNLOCK02
+  - "if ! cmp /tmp/UNLOCK01 /tmp/UNLOCK02; then true; else false;fi"
+

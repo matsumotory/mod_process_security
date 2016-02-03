@@ -1,0 +1,48 @@
+NameVirtualHost *:8080
+Listen 127.0.0.1:8080
+
+LoadModule dav_module modules/mod_dav.so
+LoadModule dav_fs_module modules/mod_dav_fs.so
+LoadModule cgi_module modules/mod_cgi.so
+LoadModule process_security_module modules/mod_process_security.so
+
+# for Webdav setting
+
+<VirtualHost *:8080>
+<IfModule mod_process_security.c>
+PSExAll On
+PSDavEnable On
+PSDavUidGid 1004 1004
+</IfModule>
+
+ServerAdmin webmaster@localhost
+DocumentRoot /usr/local/apache2/webdav/
+ServerName mps-webdav.test
+DAVLockDB /usr/local/apache2/webdav/.dav
+
+<Directory /usr/local/apache2/webdav>
+Order allow,deny
+Allow from all
+DAV ON
+</Directory>
+</VirtualHost>
+
+# for normal setting
+
+<VirtualHost *:8080>
+<IfModule mod_process_security.c>
+PSExAll On
+</IfModule>
+
+ServerAdmin webmaster@localhost
+DocumentRoot /usr/local/apache2/webdav/
+ServerName mps-normal.test
+
+<Directory /usr/local/apache2/webdav>
+Options ExecCGI
+AddHandler cgi-script .pl .cgi
+Order allow,deny
+Allow from all
+</Directory>
+</VirtualHost>
+
