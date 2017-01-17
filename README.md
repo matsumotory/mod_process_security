@@ -1,4 +1,4 @@
-# mod_process_security [![Build Status](https://travis-ci.org/matsumoto-r/mod_process_security.svg?branch=master)](https://travis-ci.org/matsumoto-r/mod_process_security)
+# mod_process_security [![Build Status](https://travis-ci.org/matsumotory/mod_process_security.svg?branch=master)](https://travis-ci.org/matsumotory/mod_process_security)
 This module is a suEXEC module for CGI and DSO. Improvement of mod_ruid2(vulnerability) and mod_suexec(performance).
 
 See also http://blog.matsumoto-r.jp/?p=1972
