@@ -6,7 +6,7 @@ before_install:
 install:
   - sudo apt-get -qq install rake bison libcurl4-openssl-dev libhiredis-dev libmarkdown2-dev libapr1-dev libaprutil1-dev apache2 libcap-dev curl
 env:
-  - HTTPD_VERSION=httpd-2.2.31
+  - HTTPD_VERSION=httpd-2.2.32
     HTTPD_CONFIG_OPT="--with-mpm=prefork --enable-module=all --enable-mods-shared=all"
     APR=apr-1.5.2 
     APR_UTIL=apr-util-1.5.4 
@@ -17,7 +17,7 @@ env:
     VHOST_CONF="test/mod_process_security.conf.2.2"
     VHOST_DAV_CONF="test/mod_process_security.dav.conf.2.2"
     DEFAULT_DIR="/home/travis/build/matsumoto-r/mod_process_security/"
-  - HTTPD_VERSION=httpd-2.4.18 
+  - HTTPD_VERSION=httpd-2.4.25 
     HTTPD_CONFIG_OPT="--with-mpm=prefork"
     APR=apr-1.5.2 
     APR_UTIL=apr-util-1.5.4 
