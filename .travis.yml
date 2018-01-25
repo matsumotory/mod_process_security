@@ -16,7 +16,7 @@ env:
     APXS_CHECK_CMD="../${HTTPD_VERSION}/apache/bin/apachectl -v"
     VHOST_CONF="test/mod_process_security.conf.2.2"
     VHOST_DAV_CONF="test/mod_process_security.dav.conf.2.2"
-    DEFAULT_DIR="/home/travis/build/matsumoto-r/mod_process_security/"
+    DEFAULT_DIR="/home/travis/build/matsumotory/mod_process_security/"
   - HTTPD_VERSION=httpd-2.4.29 
     HTTPD_CONFIG_OPT="--with-mpm=prefork"
     APR=apr-1.6.3 
@@ -27,7 +27,7 @@ env:
     APXS_CHECK_CMD="../${HTTPD_VERSION}/apache/bin/apachectl -v"
     VHOST_CONF="test/mod_process_security.conf.2.4"
     VHOST_DAV_CONF="test/mod_process_security.dav.conf.2.4"
-    DEFAULT_DIR="/home/travis/build/matsumoto-r/mod_process_security/"
+    DEFAULT_DIR="/home/travis/build/matsumotory/mod_process_security/"
   #- HTTPD_VERSION=httpd-2.4.17 
 before_script:
   - cd ../
