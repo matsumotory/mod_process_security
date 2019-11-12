@@ -619,13 +619,20 @@ static int process_security_set_parent_ns_cap(request_rec *r)
 static int process_security_unset_parent_ns_cap(request_rec *r)
 {
 
+  int ret;
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
-  if (conf->httpd_uid != getuid())
-    setuid(conf->httpd_uid);
+  if (conf->httpd_uid != getuid()) {
+    ret = setuid(conf->httpd_uid);
+    if (ret < 0)
+      return ret;
+  }
 
-  if (conf->httpd_gid != getgid())
-    setgid(conf->httpd_gid);
+  if (conf->httpd_gid != getgid()) {
+    ret = setgid(conf->httpd_gid);
+    if (ret < 0)
+      return ret;
+  }
 
   return control_parent_ns_cap_effective(r, CAP_CLEAR);
 }
@@ -675,9 +682,17 @@ static int process_security_handler(request_rec *r)
     return HTTP_INTERNAL_SERVER_ERROR;
   }
 
-  process_security_set_parent_ns_cap(r);
+  if (process_security_set_parent_ns_cap(r) < 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to set parent capability", MODULE_NAME, __func__);
+    return HTTP_INTERNAL_SERVER_ERROR;
+  }
+
   status = apr_thread_join(&thread_status, thread);
-  process_security_unset_parent_ns_cap(r);
+
+  if (process_security_unset_parent_ns_cap(r) < 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to unset parent capability", MODULE_NAME, __func__);
+    return HTTP_INTERNAL_SERVER_ERROR;
+  }
 
   if (status != APR_SUCCESS) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to join a thread", MODULE_NAME, __func__);
