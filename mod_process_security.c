@@ -577,7 +577,7 @@ static int check_suexec_ids(request_rec *r)
   return APR_SUCCESS;
 }
 
-static int control_parent_ns_cap_effective(requst_rec *r, cap_flag_value_t flag)
+static int control_parent_ns_cap_effective(request_rec *r, cap_flag_value_t flag)
 {
   int ncap;
   cap_t cap;
