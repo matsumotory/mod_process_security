@@ -81,6 +81,8 @@ typedef struct {
   u_int keep_open_enable;
   uid_t default_uid;
   gid_t default_gid;
+  uid_t httpd_uid;
+  gid_t httpd_gid;
   uid_t min_uid;
   gid_t min_gid;
   u_int psdav_enable;
@@ -116,6 +118,8 @@ static void *create_config(apr_pool_t *p, server_rec *s)
 {
   process_security_config_t *conf = apr_palloc(p, sizeof(*conf));
 
+  conf->default_uid = PS_DEFAULT_UID;
+  conf->default_gid = PS_DEFAULT_GID;
   conf->default_uid = PS_DEFAULT_UID;
   conf->default_gid = PS_DEFAULT_GID;
   conf->min_uid = PS_MIN_UID;
@@ -374,6 +378,9 @@ static void process_security_child_init(apr_pool_t *p, server_rec *server)
 
   process_security_config_t *conf = ap_get_module_config(server->module_config, &process_security_module);
 
+  r->httpd_uid = getuid();
+  r->httpd_gid = getgid();
+
   capval[0] = CAP_SETUID;
   capval[1] = CAP_SETGID;
 
@@ -570,6 +577,81 @@ static int check_suexec_ids(request_rec *r)
   return APR_SUCCESS;
 }
 
+
+static int process_security_set_parent_ns_cap(request_rec *r)
+{
+
+  int ncap;
+  cap_t cap;
+  cap_value_t capval[3];
+
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+
+  ncap = 2;
+  cap = cap_init();
+  capval[0] = CAP_SETUID;
+  capval[1] = CAP_SETGID;
+
+  if (conf->cap_dac_override_enable == ON) {
+    ncap++;
+    capval[2] = CAP_DAC_OVERRIDE;
+  }
+
+  cap = cap_get_proc();
+  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
+
+  if (cap_set_proc(cap) != 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed before setuid", MODULE_NAME,
+                 __func__);
+    cap_free(cap);
+    return -1;
+  }
+
+  cap_free(cap);
+
+  return OK;
+}
+
+static int process_security_unset_parent_ns_cap(request_rec *r)
+{
+
+  int ncap;
+  cap_t cap;
+  cap_value_t capval[3];
+
+  process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
+
+  if (r->httpd_uid != getuid())
+    setuid(r->httpd_uid);
+
+  if (r->httpd_gid != getgid())
+    setgid(r->httpd_gid);
+
+  ncap = 2;
+  cap = cap_init();
+  capval[0] = CAP_SETUID;
+  capval[1] = CAP_SETGID;
+
+  if (conf->cap_dac_override_enable == ON) {
+    ncap++;
+    capval[2] = CAP_DAC_OVERRIDE;
+  }
+
+  cap = cap_get_proc();
+  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_CLEAR);
+  if (cap_set_proc(cap) != 0) {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed after setuid", MODULE_NAME, __func__);
+    cap_free(cap);
+    return -1;
+  }
+  cap_free(cap);
+
+  if (coredump)
+    prctl(PR_SET_DUMPABLE, 1);
+
+  return OK;
+}
+
 static int process_security_handler(request_rec *r)
 {
   apr_threadattr_t *thread_attr;
@@ -615,7 +697,9 @@ static int process_security_handler(request_rec *r)
     return HTTP_INTERNAL_SERVER_ERROR;
   }
 
+  process_security_set_parent_ns_cap(r);
   status = apr_thread_join(&thread_status, thread);
+  process_security_unset_parent_ns_cap(r);
 
   if (status != APR_SUCCESS) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to join a thread", MODULE_NAME, __func__);
