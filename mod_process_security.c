@@ -577,10 +577,8 @@ static int check_suexec_ids(request_rec *r)
   return APR_SUCCESS;
 }
 
-
-static int process_security_set_parent_ns_cap(request_rec *r)
+static int control_parent_ns_cap_effective(requst_rec *r, cap_flag_value_t flag)
 {
-
   int ncap;
   cap_t cap;
   cap_value_t capval[3];
@@ -598,7 +596,7 @@ static int process_security_set_parent_ns_cap(request_rec *r)
   }
 
   cap = cap_get_proc();
-  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_SET);
+  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, flag);
 
   if (cap_set_proc(cap) != 0) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed before setuid", MODULE_NAME,
@@ -612,12 +610,14 @@ static int process_security_set_parent_ns_cap(request_rec *r)
   return OK;
 }
 
+
+static int process_security_set_parent_ns_cap(request_rec *r)
+{
+  return control_parent_ns_cap_effective(r, CAP_SET);
+}
+
 static int process_security_unset_parent_ns_cap(request_rec *r)
 {
-
-  int ncap;
-  cap_t cap;
-  cap_value_t capval[3];
 
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
@@ -627,29 +627,7 @@ static int process_security_unset_parent_ns_cap(request_rec *r)
   if (r->httpd_gid != getgid())
     setgid(r->httpd_gid);
 
-  ncap = 2;
-  cap = cap_init();
-  capval[0] = CAP_SETUID;
-  capval[1] = CAP_SETGID;
-
-  if (conf->cap_dac_override_enable == ON) {
-    ncap++;
-    capval[2] = CAP_DAC_OVERRIDE;
-  }
-
-  cap = cap_get_proc();
-  cap_set_flag(cap, CAP_EFFECTIVE, ncap, capval, CAP_CLEAR);
-  if (cap_set_proc(cap) != 0) {
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s:cap_set_proc failed after setuid", MODULE_NAME, __func__);
-    cap_free(cap);
-    return -1;
-  }
-  cap_free(cap);
-
-  if (coredump)
-    prctl(PR_SET_DUMPABLE, 1);
-
-  return OK;
+  return control_parent_ns_cap_effective(r, CAP_CLEAR);
 }
 
 static int process_security_handler(request_rec *r)
