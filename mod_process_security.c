@@ -378,8 +378,8 @@ static void process_security_child_init(apr_pool_t *p, server_rec *server)
 
   process_security_config_t *conf = ap_get_module_config(server->module_config, &process_security_module);
 
-  r->httpd_uid = getuid();
-  r->httpd_gid = getgid();
+  conf->httpd_uid = getuid();
+  conf->httpd_gid = getgid();
 
   capval[0] = CAP_SETUID;
   capval[1] = CAP_SETGID;
@@ -621,11 +621,11 @@ static int process_security_unset_parent_ns_cap(request_rec *r)
 
   process_security_config_t *conf = ap_get_module_config(r->server->module_config, &process_security_module);
 
-  if (r->httpd_uid != getuid())
-    setuid(r->httpd_uid);
+  if (conf->httpd_uid != getuid())
+    setuid(conf->httpd_uid);
 
-  if (r->httpd_gid != getgid())
-    setgid(r->httpd_gid);
+  if (conf->httpd_gid != getgid())
+    setgid(conf->httpd_gid);
 
   return control_parent_ns_cap_effective(r, CAP_CLEAR);
 }
