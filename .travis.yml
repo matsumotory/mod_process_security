@@ -78,3 +78,4 @@ script:
   # run test.rb
   - cd ${DEFAULT_DIR}/test 
   - ./mruby/bin/mruby ./test.rb
+  - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_logfiledir)/error_log
