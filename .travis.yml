@@ -76,7 +76,8 @@ script:
   #--------------------#
 
   # run test.rb
-  - sudo chmod 755 /home/travis/build/
+  - sudo chmod 755 /home/travis
+  - sudo chmod 755 /home/travis/build
   - cd ${DEFAULT_DIR}/test 
   - ./mruby/bin/mruby ./test.rb
   - cd ${DEFAULT_DIR}
