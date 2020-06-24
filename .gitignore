@@ -6,3 +6,4 @@ mod_process_security.slo
 GPATH
 GRTAGS
 GTAGS
+.vagrant/
