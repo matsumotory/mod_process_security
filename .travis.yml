@@ -83,9 +83,4 @@ script:
   - cd ${DEFAULT_DIR}
   - sudo cat $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_logfiledir)/error_log
   - echo $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)
-  - sudo ls -la $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/
-  - sudo ls -la $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/..
-  - sudo ls -la $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/../..
-  - sudo ls -la $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/../../..
-  - sudo ls -la $(../${HTTPD_VERSION}/apache/bin/apxs -q exp_cgidir)/../../../..
 
