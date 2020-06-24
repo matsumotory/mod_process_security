@@ -28,6 +28,7 @@
 
 #define CORE_PRIVATE
 
+#include "httpd.h"
 #include "ap_config.h"
 #include "apr_file_info.h"
 #include "apr_md5.h"
@@ -37,7 +38,6 @@
 #include "http_log.h"
 #include "http_protocol.h"
 #include "http_request.h"
-#include "httpd.h"
 #include "mpm_common.h"
 #include "unixd.h"
 #include <grp.h>
