@@ -28,25 +28,25 @@
 
 #define CORE_PRIVATE
 
-#include "apr_strings.h"
-#include "apr_md5.h"
-#include "apr_file_info.h"
 #include "ap_config.h"
-#include "httpd.h"
+#include "apr_file_info.h"
+#include "apr_md5.h"
+#include "apr_strings.h"
 #include "http_config.h"
 #include "http_core.h"
 #include "http_log.h"
 #include "http_protocol.h"
 #include "http_request.h"
-#include "unixd.h"
+#include "httpd.h"
+#include "mod_process_security_dav.h"
 #include "mpm_common.h"
+#include "unixd.h"
+#include <grp.h>
+#include <limits.h>
+#include <sys/capability.h>
+#include <sys/prctl.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <grp.h>
-#include <sys/prctl.h>
-#include <sys/capability.h>
-#include <limits.h>
-#include "mod_process_security_dav.h"
 
 #define MODULE_NAME "mod_process_security"
 #define MODULE_VERSION "1.1.4"
@@ -432,8 +432,9 @@ static int process_security_set_cap(request_rec *r)
   }
 
   if (uid < conf->min_uid || gid < conf->min_gid) {
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, "%s NOTICE %s: uidgid(uid=%d gid=%d) of %s is less than "
-                                                    "min_uidgid(min_uid=%d min_gid=%d), can't run the file",
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
+                 "%s NOTICE %s: uidgid(uid=%d gid=%d) of %s is less than "
+                 "min_uidgid(min_uid=%d min_gid=%d), can't run the file",
                  MODULE_NAME, __func__, uid, gid, r->filename, conf->min_uid, conf->min_gid);
     return -1;
   }
@@ -562,8 +563,9 @@ static int check_suexec_ids(request_rec *r)
 {
   ap_unix_identity_t *ugid = ap_run_get_suexec_identity(r);
   if (ugid == NULL) {
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: PSCheckSuexecids failed return 500: "
-                                                 "ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL,
+                 "%s ERROR %s: PSCheckSuexecids failed return 500: "
+                 "ap_run_get_suexec_identity() is NULL or not found SuexecUserGroup",
                  MODULE_NAME, __func__);
     return HTTP_INTERNAL_SERVER_ERROR;
   }
@@ -609,7 +611,6 @@ static int control_parent_ns_cap_effective(request_rec *r, cap_flag_value_t flag
 
   return OK;
 }
-
 
 static int process_security_set_parent_ns_cap(request_rec *r)
 {
@@ -690,7 +691,8 @@ static int process_security_handler(request_rec *r)
   status = apr_thread_join(&thread_status, thread);
 
   if (process_security_unset_parent_ns_cap(r) < 0) {
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to unset parent capability", MODULE_NAME, __func__);
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, NULL, "%s ERROR %s: Unable to unset parent capability", MODULE_NAME,
+                 __func__);
     return HTTP_INTERNAL_SERVER_ERROR;
   }
 
