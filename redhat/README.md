@@ -49,7 +49,7 @@ cd redhat/
 e.g.:
 
 ```
-git tag -a vx.y.z-n -m "vx.y.z-n"
+git tag -a vx.y.z-n -m "mod_process_security vx.y.z-n"
 git push origin refs/tags/vx.y.z-n
 ```
 

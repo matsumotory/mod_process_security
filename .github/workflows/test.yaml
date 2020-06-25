@@ -29,8 +29,8 @@ jobs:
           cd redhat/
           ./build $(echo ${BUILD_IMAGE} | sed 's/-/:/')
       - name: Upload artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.image }}
-          path: redhat/rpmbuild/RPMS/x86_64
+          path: [ redhat/rpmbuild/RPMS/x86_64, redhat/rpmbuild/SRPMS ]
 
