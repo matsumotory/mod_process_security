@@ -3,6 +3,10 @@ This module is a suEXEC module for CGI and DSO. Improvement of mod_ruid2(vulnera
 
 See also http://blog.matsumoto-r.jp/?p=1972
 
+## Package Repository
+
+- [jfut/mod_process_security-rpm](https://github.com/jfut/mod_process_security-rpm)
+
 ## How To Compile
 - build
 ```
