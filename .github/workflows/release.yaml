@@ -1,0 +1,53 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  release:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        image:
+          - centos-7
+          - centos-8
+
+    env:
+      BUILD_IMAGE: ${{ matrix.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Build RPM
+        id: build_rpm
+        run: |
+          cd redhat/
+          ./build $(echo ${BUILD_IMAGE} | sed 's/-/:/')
+          echo "##[set-output name=release-tag;]$(echo ${{ github.ref }} | sed -e 's|refs/tags/||g')"
+      - name: Upload Assets
+        uses: AButler/upload-release-assets@v1.0
+        with:
+          files: "redhat/rpmbuild/RPMS/x86_64/*.rpm"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: ${{ steps.build_rpm.outputs.release-tag }}
+

@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+# Build RPM with docker
+
+DOCKER_RPMBUILD_DIR="/pkg/rpmbuild"
+SPEC_FILE_NAME="mod_process_security.spec"
+
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+HOST_RPMBUILD_DIR="${SCRIPT_DIR}/rpmbuild"
+
+PACKAGER="$(basename "${0}")"
+
+# Usage
+usage() {
+    cat << _EOF_
+Usage:
+    ${PACKAGER} [-d] [-h] BUILD_IMAGE_NAME
+
+    Options:
+        -d Debug mode.
+
+    Build for CentOS 8:
+        ${PACKAGER} centos:8
+
+    Build for CentOS 7:
+        ${PACKAGER} centos:7
+_EOF_
+}
+
+setup_dir() {
+    # Build directories
+    for i in BUILD BUILDROOT RPMS SOURCES SPECS SRPMS tmp
+    do
+        DIR="${HOST_RPMBUILD_DIR}/${i}"
+        if [[ ! -d "${DIR}" ]]; then
+            mkdir "${DIR}"
+        fi
+    done
+}
+
+build() {
+    local BUILD_IMAGE="$1"
+
+    local BUILD_HOSTNAME="rpmbuild.$(echo ${BUILD_IMAGE} | tr -d ':').docker"
+
+    local DOCKER_OPTIONS=""
+    local BUILD_CMD="$(dirname ${DOCKER_RPMBUILD_DIR})/build-rpm ${DOCKER_RPMBUILD_DIR} ${SPEC_FILE_NAME}"
+    if [[ "${DEBUG}" = "yes" ]]; then
+        DOCKER_OPTIONS="-it"
+        BUILD_CMD="/bin/bash"
+    fi
+
+    # Build
+    docker run \
+        --name ${BUILD_HOSTNAME} \
+        -h "${BUILD_HOSTNAME}" \
+        -v "${SCRIPT_DIR}":$(dirname ${DOCKER_RPMBUILD_DIR}) \
+        --rm=true \
+        ${DOCKER_OPTIONS} \
+        ${BUILD_IMAGE} \
+        /bin/bash -c "${BUILD_CMD}"
+}
+
+# Main
+main() {
+    [[ $# -lt 1 ]] && usage && exit 1
+
+    while getopts dh OPT; do
+        case "${OPT}" in
+            "d" )
+                DEBUG="yes" ;;
+            "h" )
+                usage
+                exit 0
+                ;;
+            * )
+                usage
+                exit 1
+                ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+
+    build "${@}"
+}
+
+[[ ${#BASH_SOURCE[@]} = 1 ]] && main "${@}"
+

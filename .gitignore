@@ -7,3 +7,12 @@ GPATH
 GRTAGS
 GTAGS
 .vagrant/
+
+# redhat rpmbuild
+redhat/rpmbuild/BUILD/*
+redhat/rpmbuild/BUILDROOT/*
+redhat/rpmbuild/RPMS/*
+redhat/rpmbuild/SOURCES/*.tar.gz
+redhat/rpmbuild/SOURCES/*.tar.bz2
+redhat/rpmbuild/SRPMS/*
+redhat/rpmbuild/tmp/*

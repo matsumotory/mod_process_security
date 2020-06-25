@@ -1,0 +1,36 @@
+name: test
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        image:
+          - centos-7
+          - centos-8
+
+    env:
+      BUILD_IMAGE: ${{ matrix.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Build RPM
+        id: build_rpm
+        run: |
+          cd redhat/
+          ./build $(echo ${BUILD_IMAGE} | sed 's/-/:/')
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.image }}
+          path: redhat/rpmbuild/RPMS/x86_64
+

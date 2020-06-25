@@ -1,0 +1,50 @@
+#!/bin/bash
+#
+# Build RPM
+
+BUILD_PACKAGES="autoconf automake libtool gcc make rpm-build rpmdevtools"
+
+if [[ $# -lt 2 ]]; then
+    echo $0 RPMBUILD_DIR SPEC_FILE_NAME
+    exit 1
+fi
+
+RPMBUILD_DIR="$1"
+SPEC_FILE_NAME="$2"
+
+pushd "${RPMBUILD_DIR}"
+
+if [[ -f /usr/bin/dnf ]]; then
+    # el8 or later
+    echo "Installing build tools and dependencies: ${BUILD_PACKAGES} dnf-plugins-core"
+    until dnf -y install ${BUILD_PACKAGES} dnf-plugins-core
+    do
+        echo "Retry: dnf install"
+    done
+    until dnf -y builddep "SPECS/${SPEC_FILE_NAME}"
+    do
+        echo "Retry: dnf builddep"
+    done
+else
+    echo "Installing build tools and dependencies: ${BUILD_PACKAGES}"
+    until yum -y install ${BUILD_PACKAGES}
+    do
+        echo "Retry: yum makecache"
+    done
+    until yum-builddep -y "SPECS/${SPEC_FILE_NAME}"
+    do
+        echo "Retry: yum-builddep"
+    done
+fi
+
+spectool -g -A "SPECS/${SPEC_FILE_NAME}" -C SOURCES/
+
+echo "Building RPM:"
+RPM_DIST=$(egrep "\%dist" /etc/rpm/macros.dist | awk '{ print $2 }' | sed -E 's|^(\..*)\..*|\1|')
+rpmbuild \
+    --define "%_topdir ${RPMBUILD_DIR}" \
+    --define "%dist ${RPM_DIST}" \
+    -ba "SPECS/${SPEC_FILE_NAME}"
+
+popd
+
