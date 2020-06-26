@@ -40,8 +40,7 @@ jobs:
         id: build_rpm
         run: |
           TAG_NAME=$(echo ${{ github.ref }} | sed -e 's|refs/tags/||g')
-          cd redhat/
-          ./build -t "${TAG_NAME}" "${BUILD_IMAGE/-/:}"
+          ./redhat/build -t "${TAG_NAME}" "${BUILD_IMAGE/-/:}"
           echo "##[set-output name=release-tag;]${TAG_NAME}"
       - name: Upload Assets
         uses: AButler/upload-release-assets@v2.0

@@ -4,14 +4,16 @@
 #
 # @author Jun Futagawa (jfut)
 
-DOCKER_RPMBUILD_DIR="/pkg/rpmbuild"
-GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-jfut/mod_process_security-test}"
 SPEC_FILE_NAME="mod_process_security.spec"
 
+PACKAGER="$(basename "${0}")"
 SCRIPT_DIR=$(dirname $(readlink -f $0))
 HOST_RPMBUILD_DIR="${SCRIPT_DIR}/rpmbuild"
 
-PACKAGER="$(basename "${0}")"
+# /path/to/user/repository/redhat -> user/repository
+GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-$(dirname ${SCRIPT_DIR} | sed 's|.*/\(.*/.*\)|\1|g')}"
+
+DOCKER_RPMBUILD_DIR="/pkg/rpmbuild"
 
 # Usage
 usage() {

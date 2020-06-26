@@ -24,8 +24,7 @@ jobs:
       - name: Build RPM
         id: build_rpm
         run: |
-          cd redhat/
-          ./build -t "${GITHUB_SHA}" "${BUILD_IMAGE/-/:}"
+          ./redhat/build -t "${GITHUB_SHA}" "${BUILD_IMAGE/-/:}"
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
