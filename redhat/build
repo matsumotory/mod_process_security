@@ -51,7 +51,7 @@ setup() {
     local PACKAGE_RELEASE="1"
     local PACKAGE_URL="https://github.com/${GITHUB_REPOSITORY}"
     local PACKAGE_SOURCE="${PACKAGE_URL}/archive/${BUILD_TAG}.tar.gz"
-    local PACKAGE_CHANGELOG="* $(date "+%a %h %d %Y") GitHub Actions - ${PACKAGE_VERSION}-${PACKAGE_RELEASE}\n- Update to version ${PACKAGE_DIR_VERSION}"
+    local PACKAGE_CHANGELOG="* $(date "+%a %h %d %Y") GitHub Actions <${PACKAGE_NAME}@noreply.github.com> - ${PACKAGE_VERSION}-${PACKAGE_RELEASE}\n- Update to version ${PACKAGE_DIR_VERSION}"
 
     echo "PACKAGE_NAME: ${PACKAGE_NAME}"
     echo "PACKAGE_DIR_VERSION: ${PACKAGE_DIR_VERSION}"
