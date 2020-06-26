@@ -2,8 +2,6 @@
 
 [![Build Status](https://github.com/matsumotory/mod_process_security/workflows/test/badge.svg?branch=master)](https://github.com/matsumotory/mod_process_security/actions?query=workflow%3Atest)
 
-RPM Packaging for [mod_process_security](https://github.com/matsumotory/mod_process_security).
-
 ## Install an RPM package
 
 - [Download](https://github.com/matsumotory/mod_process_security/releases)
@@ -15,16 +13,18 @@ RPM Packaging for [mod_process_security](https://github.com/matsumotory/mod_proc
 
 ```
 Usage:
-    build [-d] [-h] BUILD_IMAGE_NAME
+    build [-d] [-h] [-t BUILD_TAG] BUILD_IMAGE_NAME
 
     Options:
         -d Debug mode.
+        -t Build target tag (default: latest)
+            e.g.: v1.0.0, SHA_HASH
 
     Build for CentOS 8:
-        build -i centos:8
+        build -t vx.y.z centos:8
 
     Build for CentOS 7:
-        build -i centos:7
+        build -t vx.y.z centos:7
 ```
 
 ## Build RPM Packages with Docker
@@ -32,15 +32,13 @@ Usage:
 You can build RPM packages in Docker.
 
 ```
-cd redhat/
-./build
+./redhat/build
 ```
 
 - Debug shell
 
 ```
-cd redhat/
-./build -d
+./redhat/build -d
 /pkg/build-rpm /pkg/rpmbuild mod_process_security.spec
 ```
 
@@ -49,7 +47,7 @@ cd redhat/
 e.g.:
 
 ```
-git tag -a vx.y.z-n -m "mod_process_security vx.y.z-n"
-git push origin refs/tags/vx.y.z-n
+git tag -a vx.y.z -m "mod_process_security vx.y.z"
+git push origin refs/tags/vx.y.z
 ```
 
