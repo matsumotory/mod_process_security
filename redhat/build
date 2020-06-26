@@ -86,6 +86,9 @@ build() {
         BUILD_CMD="/bin/bash"
     fi
 
+    # Update the docker image for each build
+    docker pull ${BUILD_IMAGE}
+
     # Build
     docker run \
         --name ${BUILD_HOSTNAME} \
