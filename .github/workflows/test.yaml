@@ -1,0 +1,33 @@
+name: test
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        image:
+          - centos-7
+          - centos-8
+
+    env:
+      BUILD_IMAGE: ${{ matrix.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build RPM
+        id: build_rpm
+        run: |
+          ./redhat/build -t "${GITHUB_SHA}" "${BUILD_IMAGE/-/:}"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.image }}
+          path: redhat/rpmbuild/**/*.rpm
+

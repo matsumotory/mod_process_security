@@ -1,0 +1,133 @@
+#!/bin/bash
+#
+# Build RPM with docker
+#
+# @author Jun Futagawa (jfut)
+
+SPEC_FILE_NAME="mod_process_security.spec"
+
+PACKAGER="$(basename "${0}")"
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+HOST_RPMBUILD_DIR="${SCRIPT_DIR}/rpmbuild"
+
+# /path/to/user/repository/redhat -> user/repository
+GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-$(dirname ${SCRIPT_DIR} | sed 's|.*/\(.*/.*\)|\1|g')}"
+
+DOCKER_RPMBUILD_DIR="/pkg/rpmbuild"
+
+# Usage
+usage() {
+    cat << _EOF_
+Usage:
+    ${PACKAGER} [-d] [-h] [-t BUILD_TAG] BUILD_IMAGE_NAME
+
+    Options:
+        -d Debug mode.
+        -t Build target tag (default: latest)
+            e.g.: v1.0.0, SHA_HASH
+
+    Build for CentOS 8:
+        ${PACKAGER} -t vx.y.z centos:8
+
+    Build for CentOS 7:
+        ${PACKAGER} -t vx.y.z centos:7
+_EOF_
+}
+
+setup() {
+    local BUILD_TAG="$1"
+    
+    echo "# Build environment"
+    local PACKAGE_NAME="$(basename ${GITHUB_REPOSITORY})"
+    # Fix for release tag
+    # 1.0.0
+    # -> PACKAGE_DIR_VERSION: 1.0.0
+    # -> PACKAGE_VERSION: 1.0.0
+    # -> PACKAGE_RELEASE: 1
+    # v1.0.0-beta1-a
+    # -> PACKAGE_DIR_VERSION: 1.0.0-beta1-a
+    # -> PACKAGE_VERSION: 1.0.0.beta1.a
+    # -> PACKAGE_RELEASE: 1
+    local PACKAGE_DIR_VERSION="$(echo ${BUILD_TAG} | sed 's/^v//')"
+    local PACKAGE_VERSION="${PACKAGE_DIR_VERSION/-/.}"
+    local PACKAGE_RELEASE="1"
+    local PACKAGE_URL="https://github.com/${GITHUB_REPOSITORY}"
+    local PACKAGE_SOURCE="${PACKAGE_URL}/archive/${BUILD_TAG}.tar.gz"
+    local PACKAGE_CHANGELOG="* $(date "+%a %h %d %Y") GitHub Actions <${PACKAGE_NAME}@noreply.github.com> - ${PACKAGE_VERSION}-${PACKAGE_RELEASE}\n- Update to version ${PACKAGE_DIR_VERSION}"
+
+    echo "PACKAGE_NAME: ${PACKAGE_NAME}"
+    echo "PACKAGE_DIR_VERSION: ${PACKAGE_DIR_VERSION}"
+    echo "PACKAGE_VERSION: ${PACKAGE_VERSION}"
+    echo "PACKAGE_RELEASE: ${PACKAGE_RELEASE}"
+    echo "PACKAGE_URL: ${PACKAGE_URL}"
+    echo "PACKAGE_SOURCE: ${PACKAGE_SOURCE}"
+    echo "PACKAGE_CHANGELOG: ${PACKAGE_CHANGELOG}"
+
+    # Setup spec file
+    echo "# Setup ${SPEC_FILE_NAME}"
+    local SPEC_FILE="${HOST_RPMBUILD_DIR}/SPECS/${SPEC_FILE_NAME}"
+    cat "${SPEC_FILE}.in" > "${SPEC_FILE}"
+    sed -i -e "s|@PACKAGE_NAME@|${PACKAGE_NAME}|g" "${SPEC_FILE}"
+    sed -i -e "s|@PACKAGE_DIR_VERSION@|${PACKAGE_DIR_VERSION}|g" "${SPEC_FILE}"
+    sed -i -e "s|@PACKAGE_VERSION@|${PACKAGE_VERSION}|g" "${SPEC_FILE}"
+    sed -i -e "s|@PACKAGE_RELEASE@|${PACKAGE_RELEASE}|g" "${SPEC_FILE}"
+    sed -i -e "s|@PACKAGE_URL@|${PACKAGE_URL}|g" "${SPEC_FILE}"
+    sed -i -e "s|@PACKAGE_SOURCE@|${PACKAGE_SOURCE}|g" "${SPEC_FILE}"
+    sed -i -e "s|@PACKAGE_CHANGELOG@|${PACKAGE_CHANGELOG}|g" "${SPEC_FILE}"
+}
+
+build() {
+    local BUILD_IMAGE="$1"
+
+    local BUILD_HOSTNAME="rpmbuild.$(echo ${BUILD_IMAGE} | tr -d ':').docker"
+
+    local DOCKER_OPTIONS=""
+    local BUILD_CMD="$(dirname ${DOCKER_RPMBUILD_DIR})/build-rpm ${DOCKER_RPMBUILD_DIR} ${SPEC_FILE_NAME}"
+    if [[ "${DEBUG}" = "yes" ]]; then
+        DOCKER_OPTIONS="-it"
+        BUILD_CMD="/bin/bash"
+    fi
+
+    # Update the docker image for each build
+    docker pull ${BUILD_IMAGE}
+
+    # Build
+    docker run \
+        --name ${BUILD_HOSTNAME} \
+        -h "${BUILD_HOSTNAME}" \
+        -v "${SCRIPT_DIR}":$(dirname ${DOCKER_RPMBUILD_DIR}) \
+        --rm=true \
+        ${DOCKER_OPTIONS} \
+        ${BUILD_IMAGE} \
+        /bin/bash -c "${BUILD_CMD}"
+}
+
+# Main
+main() {
+    [[ $# -lt 1 ]] && usage && exit 1
+
+    BUILD_TAG="latest"
+    while getopts dht: OPT; do
+        case "${OPT}" in
+            "d" )
+                DEBUG="yes" ;;
+            "h" )
+                usage
+                exit 0
+                ;;
+            "t" )
+                BUILD_TAG="${OPTARG}" ;;
+            * )
+                usage
+                exit 1
+                ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+
+    setup "${BUILD_TAG}"
+    build "${@}"
+}
+
+[[ ${#BASH_SOURCE[@]} = 1 ]] && main "${@}"
+
