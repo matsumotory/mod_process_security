@@ -45,9 +45,9 @@ jobs:
           ./build $(echo ${BUILD_IMAGE} | sed 's/-/:/')
           echo "##[set-output name=release-tag;]$(echo ${{ github.ref }} | sed -e 's|refs/tags/||g')"
       - name: Upload Assets
-        uses: AButler/upload-release-assets@v1.0
+        uses: AButler/upload-release-assets@v2.0
         with:
-          files: "redhat/rpmbuild/RPMS/x86_64/*.rpm"
+          files: "redhat/rpmbuild/RPMS/x86_64/*.rpm;redhat/rpmbuild/SRPMS/*.rpm"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: ${{ steps.build_rpm.outputs.release-tag }}
 

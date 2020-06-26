@@ -32,5 +32,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.image }}
-          path: [ redhat/rpmbuild/RPMS/x86_64, redhat/rpmbuild/SRPMS ]
+          path: redhat/rpmbuild/**/*.rpm
 
