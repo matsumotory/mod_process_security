@@ -1,8 +1,11 @@
 #!/bin/bash
 #
 # Build RPM
+#
+# @author Jun Futagawa (jfut)
 
 BUILD_PACKAGES="autoconf automake libtool gcc make rpm-build rpmdevtools"
+MAX_RETRY="10"
 
 if [[ $# -lt 2 ]]; then
     echo $0 RPMBUILD_DIR SPEC_FILE_NAME
@@ -12,31 +15,49 @@ fi
 RPMBUILD_DIR="$1"
 SPEC_FILE_NAME="$2"
 
+export LC_ALL=C
+
 pushd "${RPMBUILD_DIR}"
 
+# install dependencies
 if [[ -f /usr/bin/dnf ]]; then
     # el8 or later
+    echo
     echo "Installing build tools and dependencies: ${BUILD_PACKAGES} dnf-plugins-core"
-    until dnf -y install ${BUILD_PACKAGES} dnf-plugins-core
+    RETRY=0
+    until dnf -y install ${BUILD_PACKAGES} dnf-plugins-core || [[ "${RETRY}" -eq "${MAX_RETRY}" ]];
     do
-        echo "Retry: dnf install"
+        echo
+        sleep $((RETRY++))
+        echo "Retry: dnf -y install ${BUILD_PACKAGES} (retry: ${RETRY})"
     done
-    until dnf -y builddep "SPECS/${SPEC_FILE_NAME}"
+    until dnf -y builddep "SPECS/${SPEC_FILE_NAME}" || [[ "${RETRY}" -eq "${MAX_RETRY}" ]];
     do
-        echo "Retry: dnf builddep"
+        sleep $((RETRY++))
+        echo
+        echo "Retry: dnf -y builddep \"SPECS/${SPEC_FILE_NAME}\" (retry: ${RETRY})"
     done
 else
+    echo
     echo "Installing build tools and dependencies: ${BUILD_PACKAGES}"
-    until yum -y install ${BUILD_PACKAGES}
+    until yum -y install ${BUILD_PACKAGES} || [[ "${RETRY}" -eq "${MAX_RETRY}" ]];
     do
-        echo "Retry: yum makecache"
+        sleep $((RETRY++))
+        echo
+        echo "Retry: yum -y install ${BUILD_PACKAGES} (retry: ${RETRY})"
     done
-    until yum-builddep -y "SPECS/${SPEC_FILE_NAME}"
+    until yum-builddep -y "SPECS/${SPEC_FILE_NAME}" || [[ "${RETRY}" -eq "${MAX_RETRY}" ]];
     do
-        echo "Retry: yum-builddep"
+        sleep $((RETRY++))
+        echo
+        echo "Retry: yum-builddep -y \"SPECS/${SPEC_FILE_NAME}\" (retry: ${RETRY})"
     done
 fi
 
+# build rpm
+if [[ ! -d SOURCES ]]; then
+    mkdir SOURCES
+fi
 spectool -g -A "SPECS/${SPEC_FILE_NAME}" -C SOURCES/
 
 echo "Building RPM:"

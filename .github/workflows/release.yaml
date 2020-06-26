@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1.0.0
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -35,15 +35,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
+        uses: actions/checkout@v2
       - name: Build RPM
         id: build_rpm
         run: |
+          TAG_NAME=$(echo ${{ github.ref }} | sed -e 's|refs/tags/||g')
           cd redhat/
-          ./build $(echo ${BUILD_IMAGE} | sed 's/-/:/')
-          echo "##[set-output name=release-tag;]$(echo ${{ github.ref }} | sed -e 's|refs/tags/||g')"
+          ./build -t "${TAG_NAME}" "${BUILD_IMAGE/-/:}"
+          echo "##[set-output name=release-tag;]${TAG_NAME}"
       - name: Upload Assets
         uses: AButler/upload-release-assets@v2.0
         with:

@@ -1,3 +1,4 @@
+%{!?_dir_version:      %{expand: %%global _dir_version @PACKAGE_DIR_VERSION@}}
 %{!?_httpd_mmn:        %{expand: %%global _httpd_mmn %%(cat %{_includedir}/httpd/.mmn || echo 0-0)}}
 %{!?_httpd_apxs:       %{expand: %%global _httpd_apxs %%{_sbindir}/apxs}}
 %{!?_httpd_confdir:    %{expand: %%global _httpd_confdir %%{_sysconfdir}/httpd/conf.d}}
@@ -6,13 +7,13 @@
 %{!?_httpd_moddir:     %{expand: %%global _httpd_moddir %%{_libdir}/httpd/modules}}
 
 Summary: A suEXEC module for CGI and DSO for Apache 2
-Name: mod_process_security
-Version: 1.2.0
-Release: 1%{?dist}
+Name: @PACKAGE_NAME@
+Version: @PACKAGE_VERSION@
+Release: @PACKAGE_RELEASE@%{?dist}
 License: MIT
 Group: System Environment/Daemons
-URL: https://github.com/matsumotory/mod_process_security
-Source0: https://github.com/matsumotory/%{name}/archive/v%{version}.tar.gz
+URL: @PACKAGE_URL@
+Source0: @PACKAGE_SOURCE@
 Source1: mod_process_security.conf
 BuildRequires: httpd-devel
 BuildRequires: pkgconfig
@@ -24,7 +25,7 @@ This Apache module is a suEXEC module for CGI and DSO.
 Improvement of mod_ruid2(vulnerability) and mod_suexec(performance).
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{_dir_version}
 
 %build
 make
@@ -46,6 +47,8 @@ rm -rf %{buildroot}
 %{_httpd_moddir}/mod_process_security.so
 
 %changelog
+@PACKAGE_CHANGELOG@
+
 * Thu Jun 25 2020 Jun Futagawa <jfut@integ.jp> - 1.2.0-1
 - Update to version 1.2.0
 

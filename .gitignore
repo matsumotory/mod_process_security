@@ -12,7 +12,9 @@ GTAGS
 redhat/rpmbuild/BUILD/*
 redhat/rpmbuild/BUILDROOT/*
 redhat/rpmbuild/RPMS/*
+redhat/rpmbuild/SOURCES/mod_process_security*
 redhat/rpmbuild/SOURCES/*.tar.gz
 redhat/rpmbuild/SOURCES/*.tar.bz2
+redhat/rpmbuild/SPECS/mod_process_security.spec
 redhat/rpmbuild/SRPMS/*
 redhat/rpmbuild/tmp/*
