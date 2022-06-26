@@ -20,10 +20,10 @@ Usage:
         -t Build target tag (default: latest)
             e.g.: v1.0.0, SHA_HASH
 
-    Build for CentOS 8:
-        build -t vx.y.z centos:8
+    Build for RHEL/AlmaLinux/Rocky Linux 8:
+        build -t vx.y.z almalinux:8
 
-    Build for CentOS 7:
+    Build for RHEL/CentOS 7:
         build -t vx.y.z centos:7
 ```
 
