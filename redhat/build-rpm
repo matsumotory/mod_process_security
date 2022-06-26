@@ -19,6 +19,15 @@ export LC_ALL=C
 
 pushd "${RPMBUILD_DIR}"
 
+# RPM macros
+RPM_MACROS=/usr/lib/rpm/macros.d/macros.dist
+if [[ -f /etc/rpm/macros.dist ]]; then
+    # el7 and el8
+    RPM_MACROS=/etc/rpm/macros.dist
+fi
+RPM_DIST=.$(egrep -o "^%el[0-9]*" "${RPM_MACROS}" | tr -d '%')
+echo "RPM_DIST: ${RPM_DIST} (${RPM_MACROS})"
+
 # install dependencies
 if [[ -f /usr/bin/dnf ]]; then
     # el8 or later
@@ -58,10 +67,16 @@ fi
 if [[ ! -d SOURCES ]]; then
     mkdir SOURCES
 fi
-spectool -g -A "SPECS/${SPEC_FILE_NAME}" -C SOURCES/
+
+if [[ "${RPM_DIST}" = ".el9" ]]; then
+    # el9 or later
+    spectool -g -a "SPECS/${SPEC_FILE_NAME}" -C SOURCES/
+else
+    # el7 or el8
+    spectool -g -A "SPECS/${SPEC_FILE_NAME}" -C SOURCES/
+fi
 
 echo "Building RPM:"
-RPM_DIST=$(egrep "\%dist" /etc/rpm/macros.dist | awk '{ print $2 }' | sed -E 's|^(\..*)\..*|\1|')
 rpmbuild \
     --define "%_topdir ${RPMBUILD_DIR}" \
     --define "%dist ${RPM_DIST}" \

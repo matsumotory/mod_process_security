@@ -20,6 +20,9 @@ Usage:
         -t Build target tag (default: latest)
             e.g.: v1.0.0, SHA_HASH
 
+    Build for RHEL/AlmaLinux/Rocky Linux 9:
+        build -t vx.y.z almalinux:9
+
     Build for RHEL/AlmaLinux/Rocky Linux 8:
         build -t vx.y.z almalinux:8
 

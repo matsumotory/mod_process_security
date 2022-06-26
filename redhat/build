@@ -26,6 +26,9 @@ Usage:
         -t Build target tag (default: latest)
             e.g.: v1.0.0, SHA_HASH
 
+    Build for RHEL/AlmaLinux/Rocky Linux 9:
+        ${PACKAGER} -t vx.y.z almalinux:9
+
     Build for RHEL/AlmaLinux/Rocky Linux 8:
         ${PACKAGER} -t vx.y.z almalinux:8
 
@@ -84,6 +87,7 @@ build() {
     local DOCKER_OPTIONS=""
     local BUILD_CMD="$(dirname ${DOCKER_RPMBUILD_DIR})/build-rpm ${DOCKER_RPMBUILD_DIR} ${SPEC_FILE_NAME}"
     if [[ "${DEBUG}" = "yes" ]]; then
+        echo "# Manual Build: ${BUILD_CMD}"
         DOCKER_OPTIONS="-it"
         BUILD_CMD="/bin/bash"
     fi
