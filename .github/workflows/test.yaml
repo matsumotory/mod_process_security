@@ -13,7 +13,8 @@ jobs:
       matrix:
         image:
           - centos-7
-          - centos-8
+          - almalinux-8
+          - almalinux-9
 
     env:
       BUILD_IMAGE: ${{ matrix.image }}
