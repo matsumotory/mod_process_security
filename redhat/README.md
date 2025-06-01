@@ -18,7 +18,10 @@ Usage:
     Options:
         -d Debug mode.
         -t Build target tag (default: latest)
-            e.g.: v1.0.0, SHA_HASH
+            e.g.: v1.0.0, v1.0.0-1, SHA_HASH
+
+    Build for RHEL/AlmaLinux/Rocky Linux 10:
+        build -t vx.y.z almalinux:10
 
     Build for RHEL/AlmaLinux/Rocky Linux 9:
         build -t vx.y.z almalinux:9

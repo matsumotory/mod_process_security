@@ -28,6 +28,8 @@ jobs:
 
   release:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
 
     strategy:
       max-parallel: 20
@@ -35,6 +37,7 @@ jobs:
         image:
           - almalinux-8
           - almalinux-9
+          - almalinux-10
 
     env:
       BUILD_IMAGE: ${{ matrix.image }}
@@ -47,13 +50,13 @@ jobs:
         id: build_rpm
         run: |
           TAG_NAME=$(echo ${{ github.ref }} | sed -e 's|refs/tags/||g')
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
           ./redhat/build -t "${TAG_NAME}" "${BUILD_IMAGE/-/:}"
-          echo "##[set-output name=release-tag;]${TAG_NAME}"
  
       - name: Upload Assets
         uses: AButler/upload-release-assets@3d6774fae0ed91407dc5ae29d576b166536d1777 # v3.0
         with:
           files: "redhat/rpmbuild/RPMS/x86_64/*.rpm;redhat/rpmbuild/SRPMS/*.rpm"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: ${{ steps.build_rpm.outputs.release-tag }}
+          release-tag: ${{ env.TAG_NAME }}
 

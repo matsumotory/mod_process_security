@@ -18,6 +18,7 @@ jobs:
         image:
           - almalinux-8
           - almalinux-9
+          - almalinux-10
 
     env:
       BUILD_IMAGE: ${{ matrix.image }}
