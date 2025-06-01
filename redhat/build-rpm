@@ -22,7 +22,7 @@ pushd "${RPMBUILD_DIR}"
 # RPM macros
 RPM_MACROS=/usr/lib/rpm/macros.d/macros.dist
 if [[ -f /etc/rpm/macros.dist ]]; then
-    # el7 and el8
+    # el8
     RPM_MACROS=/etc/rpm/macros.dist
 fi
 RPM_DIST=.$(egrep -o "^%el[0-9]*" "${RPM_MACROS}" | tr -d '%')
@@ -72,7 +72,7 @@ if [[ "${RPM_DIST}" = ".el9" ]]; then
     # el9 or later
     spectool -g -a "SPECS/${SPEC_FILE_NAME}" -C SOURCES/
 else
-    # el7 or el8
+    # el8
     spectool -g -A "SPECS/${SPEC_FILE_NAME}" -C SOURCES/
 fi
 

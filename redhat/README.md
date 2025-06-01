@@ -25,9 +25,6 @@ Usage:
 
     Build for RHEL/AlmaLinux/Rocky Linux 8:
         build -t vx.y.z almalinux:8
-
-    Build for RHEL/CentOS 7:
-        build -t vx.y.z centos:7
 ```
 
 ## Build RPM Packages with Docker
