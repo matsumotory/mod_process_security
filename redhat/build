@@ -24,16 +24,16 @@ Usage:
     Options:
         -d Debug mode.
         -t Build target tag (default: latest)
-            e.g.: v1.0.0, SHA_HASH
+            e.g.: v1.0.0, v1.0.0-1, SHA_HASH
+
+    Build for RHEL/AlmaLinux/Rocky Linux 10:
+        ${PACKAGER} -t vx.y.z almalinux:10
 
     Build for RHEL/AlmaLinux/Rocky Linux 9:
         ${PACKAGER} -t vx.y.z almalinux:9
 
     Build for RHEL/AlmaLinux/Rocky Linux 8:
         ${PACKAGER} -t vx.y.z almalinux:8
-
-    Build for RHEL/CentOS 7:
-        ${PACKAGER} -t vx.y.z centos:7
 _EOF_
 }
 
@@ -43,20 +43,19 @@ setup() {
     echo "# Build environment"
     local PACKAGE_NAME="$(basename ${GITHUB_REPOSITORY})"
     # Fix for release tag
-    # 1.0.0
+    # v1.0.0
     # -> PACKAGE_DIR_VERSION: 1.0.0
     # -> PACKAGE_VERSION: 1.0.0
-    # -> PACKAGE_RELEASE: 1
-    # v1.0.0-beta1-a
-    # -> PACKAGE_DIR_VERSION: 1.0.0-beta1-a
-    # -> PACKAGE_VERSION: 1.0.0.beta1.a
-    # -> PACKAGE_RELEASE: 1
+    # -> PACKAGE_RELEASE: 1 (default)
+    # v1.0.1-2
+    # -> PACKAGE_DIR_VERSION: 1.0.1
+    # -> PACKAGE_VERSION: 1.0.1
+    # -> PACKAGE_RELEASE: 2
     local PACKAGE_DIR_VERSION="$(echo ${BUILD_TAG} | sed 's/^v//')"
-    local PACKAGE_VERSION="${PACKAGE_DIR_VERSION/-/.}"
-    local PACKAGE_RELEASE="1"
+    local PACKAGE_VERSION="$(echo "${PACKAGE_DIR_VERSION}" | sed 's/\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/')"
+    local PACKAGE_RELEASE="$(echo "${PACKAGE_DIR_VERSION}" | sed 's/.*-\([0-9]\+\)$/\1/; t; s/.*/1/')"
     local PACKAGE_URL="https://github.com/${GITHUB_REPOSITORY}"
     local PACKAGE_SOURCE="${PACKAGE_URL}/archive/${BUILD_TAG}.tar.gz"
-    local PACKAGE_CHANGELOG="* $(date "+%a %h %d %Y") GitHub Actions <${PACKAGE_NAME}@noreply.github.com> - ${PACKAGE_VERSION}-${PACKAGE_RELEASE}\n- Update to version ${PACKAGE_DIR_VERSION}"
 
     echo "PACKAGE_NAME: ${PACKAGE_NAME}"
     echo "PACKAGE_DIR_VERSION: ${PACKAGE_DIR_VERSION}"
@@ -64,7 +63,6 @@ setup() {
     echo "PACKAGE_RELEASE: ${PACKAGE_RELEASE}"
     echo "PACKAGE_URL: ${PACKAGE_URL}"
     echo "PACKAGE_SOURCE: ${PACKAGE_SOURCE}"
-    echo "PACKAGE_CHANGELOG: ${PACKAGE_CHANGELOG}"
 
     # Setup spec file
     echo "# Setup ${SPEC_FILE_NAME}"
@@ -76,7 +74,6 @@ setup() {
     sed -i -e "s|@PACKAGE_RELEASE@|${PACKAGE_RELEASE}|g" "${SPEC_FILE}"
     sed -i -e "s|@PACKAGE_URL@|${PACKAGE_URL}|g" "${SPEC_FILE}"
     sed -i -e "s|@PACKAGE_SOURCE@|${PACKAGE_SOURCE}|g" "${SPEC_FILE}"
-    sed -i -e "s|@PACKAGE_CHANGELOG@|${PACKAGE_CHANGELOG}|g" "${SPEC_FILE}"
 }
 
 build() {
